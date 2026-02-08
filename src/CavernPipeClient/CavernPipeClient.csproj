@@ -7,11 +7,11 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <!-- 
+  <!--
     This project requires Cavern NuGet packages.
-    Run: dotnet add package Cavern --version 2.1.0
-         dotnet add package Cavern.Format --version 2.1.0
-    
+    Run: dotnet add package Cavern 2.1.0
+         dotnet add package Cavern.Format 2.1.0
+
     OR reference the patched CavernPipeServer.Logic.dll directly:
     <Reference Include="CavernPipeServer.Logic" HintPath="../../bin/CavernPipeServer.Logic.dll" />
   -->
