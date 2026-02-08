@@ -1,0 +1,28 @@
+# Build artifacts
+bin/
+obj/
+*.dll
+*.exe
+*.pdb
+
+# Logs
+logs/
+*.log
+
+# Cache
+.caern-wireless/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.sln
+*.user
+
+# Temp files
+/tmp/
+*.tmp
+*.temp
