@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 
 using Cavern;
 using Cavern.Format;
@@ -89,31 +89,24 @@ public class CavernPipeRenderer : IDisposable {
     /// Wait for enough input stream data and render the next set of samples, of which the count will be <see cref="Listener.UpdateRate"/> per channel.
     /// </summary>
     void RenderThread() {
-        Console.WriteLine("[RenderThread] Starting...");
         try {
             Stream audioSource;
             int updateRate;
             
             if (Protocol.IsFileBasedMode) {
                 // File-based mode: read file path from Input and open file directly
-                Console.WriteLine("[RenderThread] File-based mode, reading file path...");
                 audioSource = OpenFileFromPath();
                 if (audioSource == null) {
-                    Console.WriteLine("[RenderThread] Failed to open file, aborting.");
                     return;
                 }
                 updateRate = -Protocol.UpdateRate; // Use absolute value
-                Console.WriteLine($"[RenderThread] File opened, updateRate={updateRate}");
             } else {
                 // Streaming mode: use Input stream directly
-                Console.WriteLine("[RenderThread] Streaming mode.");
                 audioSource = Input;
                 updateRate = Protocol.UpdateRate;
             }
             
-            Console.WriteLine("[RenderThread] Opening AudioReader...");
             AudioReader reader = AudioReader.Open(audioSource);
-            Console.WriteLine($"[RenderThread] AudioReader opened: {reader?.GetType().Name}");
             reader.ReadHeader(); // CRITICAL: without this, Cavern reports 0ch/0Hz
             Renderer renderer = reader.GetRenderer();
             
@@ -141,16 +134,21 @@ public class CavernPipeRenderer : IDisposable {
             }
             listener.AttachSources(renderer.Objects);
 
-            // When this writer is used without writing a header, it's a BitDepth converter from float to anything, and can dump to streams.
-            RIFFWaveWriter streamDumper = new RIFFWaveWriter(Output, Protocol.OutputChannels, long.MaxValue, sampleRate, Protocol.OutputFormat);
-
             long samplesRendered = 0;
             long totalSamples = reader.Length;
             bool isFileBased = Protocol.IsFileBasedMode;
             
+            // When this writer is used without writing a header, it's a BitDepth converter from float to anything, and can dump to streams.
+            // Use actual total samples for length to prevent write issues
+            long outputLength = isFileBased ? totalSamples : long.MaxValue;
+            // Wrap Output in a non-closing stream so disposing RIFFWaveWriter doesn't close Output
+            using var nonClosingOutput = new NonClosingStreamWrapper(Output);
+            RIFFWaveWriter streamDumper = new RIFFWaveWriter(nonClosingOutput, Protocol.OutputChannels, outputLength, sampleRate, Protocol.OutputFormat);
+            
             while (Input != null) {
                 float[] render = listener.Render();
                 UpdateMeters(render);
+                
                 if (reRender == null) {
                     streamDumper.WriteBlock(render, 0, render.LongLength);
                 } else {
@@ -177,18 +175,14 @@ public class CavernPipeRenderer : IDisposable {
     /// </summary>
     Stream? OpenFileFromPath() {
         try {
-            Console.WriteLine($"[OpenFileFromPath] Input type: {Input?.GetType().Name}, Length: {Input?.Length}");
-            Console.WriteLine("[OpenFileFromPath] Waiting for data...");
             // Wait for data to be available in Input
             if (Input is Cavern.Format.Utilities.QueueStream qs) {
                 qs.WaitForData();
-                Console.WriteLine("[OpenFileFromPath] WaitForData returned");
             }
             
             // Read path length (4 bytes)
             byte[] lengthBytes = new byte[4];
             int read = Input.Read(lengthBytes, 0, 4);
-            Console.WriteLine($"[OpenFileFromPath] Read {read} bytes for length");
             if (read < 4) return null;
             int pathLength = BitConverter.ToInt32(lengthBytes, 0);
             
@@ -219,5 +213,48 @@ public class CavernPipeRenderer : IDisposable {
             result[i] = QMath.Clamp01(QMath.LerpInverse(-50, 0, channelGain));
         }
         MetersAvailable?.Invoke(result);
+    }
+}
+
+/// <summary>
+/// Wraps a stream and prevents the underlying stream from being closed when this wrapper is disposed.
+/// Also provides a fake Position property since QueueStream doesn't support seeking.
+/// This is needed because RIFFWaveWriter closes its underlying stream when disposed, but we want
+/// to keep the Output QueueStream open for the pump to read from.
+/// </summary>
+class NonClosingStreamWrapper : Stream {
+    readonly Stream baseStream;
+    long position;
+    
+    public NonClosingStreamWrapper(Stream baseStream) {
+        this.baseStream = baseStream;
+    }
+    
+    public override bool CanRead => baseStream.CanRead;
+    public override bool CanSeek => false;
+    public override bool CanWrite => baseStream.CanWrite;
+    public override long Length => baseStream.Length;
+    public override long Position {
+        get => position;
+        set => throw new NotSupportedException();
+    }
+    
+    public override void Flush() => baseStream.Flush();
+    public override int Read(byte[] buffer, int offset, int count) {
+        int read = baseStream.Read(buffer, offset, count);
+        position += read;
+        return read;
+    }
+    public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+    public override void SetLength(long value) => baseStream.SetLength(value);
+    public override void Write(byte[] buffer, int offset, int count) {
+        baseStream.Write(buffer, offset, count);
+        position += count;
+    }
+    
+    // Don't close the underlying stream when disposed
+    protected override void Dispose(bool disposing) {
+        // Intentionally don't dispose baseStream
+        base.Dispose(disposing);
     }
 }

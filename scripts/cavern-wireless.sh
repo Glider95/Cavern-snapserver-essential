@@ -254,8 +254,8 @@ start_server() {
         return 0
     fi
     
-    cd "$bin_dir"
-    dotnet CavernPipeServer.dll > "$LOG_DIR/server.log" 2>&1 &
+    # Run from project root so DLL references work correctly
+    dotnet "$bin_dir/CavernPipeServer.dll" > "$LOG_DIR/server.log" 2>&1 &
     local server_pid=$!
     
     # Wait for server to start

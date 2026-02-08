@@ -267,7 +267,11 @@ class Program
 
                 if (chunkCount == 1)
                 {
-                    Console.Error.WriteLine($"[CavernPipeClient] First PCM chunk: {pcmLength} bytes");
+                    Console.Error.WriteLine($"[CavernPipeClient] First PCM chunk: {pcmLength} bytes, firstByte={pcmBuffer[0]:X2}");
+                }
+                else if (chunkCount % 100 == 0)
+                {
+                    Console.Error.WriteLine($"[CavernPipeClient] Chunk {chunkCount}: {pcmLength} bytes, firstByte={pcmBuffer[0]:X2}, total={totalBytes}");
                 }
                 else if (chunkCount % 100 == 0)
                 {

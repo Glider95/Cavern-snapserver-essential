@@ -1,4 +1,4 @@
-﻿using System.IO.Pipes;
+using System.IO.Pipes;
 
 using Cavern.Format.Utilities;
 
@@ -127,22 +127,17 @@ public class PipeHandler : IDisposable {
                 renderer.OnException += OnException;
 
                 // Handle file-based mode: read file path from client
-                Console.WriteLine($"[PipeHandler] FileBasedMode={renderer.Protocol.IsFileBasedMode}, UpdateRate={renderer.Protocol.UpdateRate}");
                 if (renderer.Protocol.IsFileBasedMode) {
-                    Console.WriteLine("[PipeHandler] Entering file-based mode handling...");
                     int pathLength = server.ReadInt32();
-                    Console.WriteLine($"[PipeHandler] Path length: {pathLength}");
                     if (pathLength <= 0 || pathLength > 65535) {
                         throw new InvalidDataException($"Invalid file path length: {pathLength}");
                     }
                     byte[] pathBytes = new byte[pathLength];
                     ReadAll(pathBytes, pathLength);
-                    Console.WriteLine($"[PipeHandler] Read path bytes: {pathBytes.Length}");
                     // Write both length and path to Input so CavernPipeRenderer can read it
                     renderer.Input.Write(BitConverter.GetBytes(pathLength), 0, 4);
                     renderer.Input.Write(pathBytes, 0, pathLength);
                     // DO NOT call Flush() - it clears the queue in QueueStream!
-                    Console.WriteLine("[PipeHandler] Wrote to Input, calling Start()...");
                     
                     // Now safe to start rendering (file path is in Input)
                     renderer.Start();
@@ -218,18 +213,18 @@ public class PipeHandler : IDisposable {
                 // Send data in smaller chunks to prevent client overrun
                 while (available > 0 && Running) {
                     int chunkSize = (int)Math.Min(available, MaxChunkSize);
-                    renderer.Output.Read(outBuffer, 0, chunkSize);
+                    int read = renderer.Output.Read(outBuffer, 0, chunkSize);
                     
                     // Send to client
                     if (server?.IsConnected == true) {
-                        await server.WriteAsync(BitConverter.GetBytes(chunkSize), 0, 4, ct);
-                        await server.WriteAsync(outBuffer, 0, chunkSize, ct);
+                        await server.WriteAsync(BitConverter.GetBytes(read), 0, 4, ct);
+                        await server.WriteAsync(outBuffer, 0, read, ct);
                         await server.FlushAsync(ct);
                     } else {
                         return;
                     }
                     
-                    available -= chunkSize;
+                    available -= read;
                     
                     // Small delay between chunks to let client process
                     if (available > 0) {
