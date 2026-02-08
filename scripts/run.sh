@@ -42,8 +42,10 @@ mkfifo "$FIFO"
 
 # Start CavernPipeServer
 echo "[run] Starting CavernPipeServer..."
-"$BIN_DIR/CavernPipeServer" > "$LOG_DIR/cavernpipe.log" 2>&1 &
+cd "$BIN_DIR"
+dotnet CavernPipeServer.dll > "$LOG_DIR/cavernpipe.log" 2>&1 &
 CAVERN_PID=$!
+cd "$ROOT_DIR"
 
 # Wait for socket
 echo "[run] Waiting for CavernPipe socket..."
