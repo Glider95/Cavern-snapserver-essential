@@ -28,6 +28,9 @@ OUTPUT_CHANNELS=${OUTPUT_CHANNELS:-6}
 SAMPLE_RATE=${SAMPLE_RATE:-48000}
 BIT_DEPTH=${BIT_DEPTH:-16}
 
+# Create required directories
+mkdir -p "$CACHE_DIR" "$LOG_DIR"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
