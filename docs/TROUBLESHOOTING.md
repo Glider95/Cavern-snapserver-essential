@@ -131,6 +131,39 @@ rm -rf src/*/bin src/*/obj
 ./scripts/build.sh
 ```
 
+### 7. "libhostpolicy.dylib not found" / "runtimeconfig.json not found"
+
+**Symptoms:**
+```
+A fatal error was encountered. The library 'libhostpolicy.dylib' 
+required to execute the application was not found in '.../bin/'.
+Failed to run as a self-contained app.
+  - The application was run as a self-contained app because 
+    '/.../bin/CavernPipeClient.runtimeconfig.json' was not found.
+```
+
+**Cause:** Missing `.runtimeconfig.json` files in `bin/` directory.
+
+**Solution:**
+```bash
+# Rebuild and copy all required files
+./scripts/build.sh
+
+# Or manually copy the missing files:
+cp src/CavernPipeClient/bin/Release/net8.0/CavernPipeClient.runtimeconfig.json bin/
+cp src/CavernPipeClient/bin/Release/net8.0/CavernPipeClient.deps.json bin/
+cp src/PipeToFifo/bin/Release/net8.0/PipeToFifo.runtimeconfig.json bin/
+cp src/PipeToFifo/bin/Release/net8.0/PipeToFifo.deps.json bin/
+```
+
+**Verify all files are present:**
+```bash
+ls -la bin/*.json
+# Should show: CavernPipeServer.runtimeconfig.json
+#              CavernPipeClient.runtimeconfig.json  
+#              PipeToFifo.runtimeconfig.json
+```
+
 ## Advanced Debugging
 
 ### Enable Debug Logging

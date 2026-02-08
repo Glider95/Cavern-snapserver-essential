@@ -36,16 +36,18 @@ log_info "Building CavernPipeClient..."
 cd src/CavernPipeClient
 dotnet build -c Release
 cd ../..
-cp src/CavernPipeClient/bin/Release/net8.0/*.dll bin/ 2>/dev/null || true
-cp src/CavernPipeClient/bin/Release/net8.0/CavernPipeClient bin/ 2>/dev/null || true
+cp src/CavernPipeClient/bin/Release/net8.0/CavernPipeClient.dll bin/
+cp src/CavernPipeClient/bin/Release/net8.0/CavernPipeClient.runtimeconfig.json bin/
+cp src/CavernPipeClient/bin/Release/net8.0/CavernPipeClient.deps.json bin/ 2>/dev/null || true
 
 # Build PipeToFifo
 log_info "Building PipeToFifo..."
 cd src/PipeToFifo
 dotnet build -c Release
 cd ../..
-cp src/PipeToFifo/bin/Release/net8.0/*.dll bin/ 2>/dev/null || true
-cp src/PipeToFifo/bin/Release/net8.0/PipeToFifo bin/ 2>/dev/null || true
+cp src/PipeToFifo/bin/Release/net8.0/PipeToFifo.dll bin/
+cp src/PipeToFifo/bin/Release/net8.0/PipeToFifo.runtimeconfig.json bin/
+cp src/PipeToFifo/bin/Release/net8.0/PipeToFifo.deps.json bin/ 2>/dev/null || true
 
 # Check for CavernPipeServer
 if [ ! -f "$PROJECT_ROOT/bin/CavernPipeServer.dll" ]; then

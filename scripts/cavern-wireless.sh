@@ -13,9 +13,10 @@ CACHE_DIR="$HOME/.cavern-wireless/cache"
 CONFIG_DIR="$PROJECT_ROOT/config"
 LOG_DIR="$PROJECT_ROOT/logs"
 
-# Paths to components
-CLIENT_DLL="$PROJECT_ROOT/src/CavernPipeClient/bin/Release/net8.0/CavernPipeClient.dll"
-PIPETOFIFO_DLL="$PROJECT_ROOT/src/PipeToFifo/bin/Release/net8.0/PipeToFifo.dll"
+# Paths to components - using pre-built binaries
+BIN_DIR="$PROJECT_ROOT/bin"
+CLIENT_DLL="$BIN_DIR/CavernPipeClient.dll"
+PIPETOFIFO_DLL="$BIN_DIR/PipeToFifo.dll"
 FIFO="/tmp/snapcast-out"
 
 # Default settings
@@ -237,18 +238,21 @@ prepare_audio() {
 start_server() {
     log_info "Starting CavernPipeServer..."
     
-    local server_path="$PROJECT_ROOT/../CavernSamples/CavernPipeServer.Multiplatform"
-    if [[ ! -d "$server_path" ]]; then
-        server_path="$PROJECT_ROOT/../../CavernSamples/CavernPipeServer.Multiplatform"
+    local bin_dir="$PROJECT_ROOT/bin"
+    
+    if [[ ! -f "$bin_dir/CavernPipeServer.dll" ]]; then
+        log_error "CavernPipeServer.dll not found in $bin_dir"
+        log_error "Please download binaries from: https://github.com/Glider95/Cavern-snapserver-essential/releases"
+        exit 1
     fi
     
     if [[ "$DRY_RUN" == true ]]; then
-        log_info "[DRY RUN] Would start: dotnet run --project $server_path"
+        log_info "[DRY RUN] Would start: dotnet $bin_dir/CavernPipeServer.dll"
         return 0
     fi
     
-    cd "$server_path"
-    dotnet run --configuration Release > "$LOG_DIR/server.log" 2>&1 &
+    cd "$bin_dir"
+    dotnet CavernPipeServer.dll > "$LOG_DIR/server.log" 2>&1 &
     local server_pid=$!
     
     # Wait for server to start
@@ -309,10 +313,11 @@ play_audio() {
         return 0
     fi
     
-    # Build client if needed
+    # Check binaries exist
     if [[ ! -f "$CLIENT_DLL" ]]; then
-        log_info "Building CavernPipeClient..."
-        dotnet build "$PROJECT_ROOT/src/CavernPipeClient/CavernPipeClient.csproj" --configuration Release
+        log_error "CavernPipeClient.dll not found in $BIN_DIR"
+        log_error "Please download binaries from: https://github.com/Glider95/Cavern-snapserver-essential/releases"
+        exit 1
     fi
     
     # Check if it's a DAMF file (file-based mode)

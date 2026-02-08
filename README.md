@@ -44,9 +44,58 @@ git clone https://github.com/truehdd/truehdd.git /tmp/truehdd
 cd /tmp/truehdd && cargo build --release
 ```
 
+## Setup
+
+Choose one of the following methods:
+
+### Option A: Download Pre-built Binaries (Quickest)
+
+```bash
+# Download all required binaries from GitHub Release
+mkdir -p bin
+cd bin
+
+# CavernPipeServer (patched version with file-based mode)
+curl -LO https://github.com/Glider95/Cavern-snapserver-essential/releases/download/v1.0.0/CavernPipeServer.dll
+curl -LO https://github.com/Glider95/Cavern-snapserver-essential/releases/download/v1.0.0/CavernPipeServer.runtimeconfig.json
+curl -LO https://github.com/Glider95/Cavern-snapserver-essential/releases/download/v1.0.0/CavernPipeServer.deps.json
+curl -LO https://github.com/Glider95/Cavern-snapserver-essential/releases/download/v1.0.0/CavernPipeServer.Logic.dll
+curl -LO https://github.com/Glider95/Cavern-snapserver-essential/releases/download/v1.0.0/Cavern.dll
+curl -LO https://github.com/Glider95/Cavern-snapserver-essential/releases/download/v1.0.0/Cavern.Format.dll
+
+cd ..
+
+# Build the client components (requires .NET 8 SDK)
+./scripts/build.sh
+```
+
+### Option B: Build Everything from Source
+
+See `docs/BUILD.md` for complete instructions on building CavernPipeServer with patches applied.
+
+### Required Files in `bin/`
+
+After setup, your `bin/` directory should contain:
+
+```
+bin/
+├── CavernPipeServer.dll           # Server (download or build)
+├── CavernPipeServer.runtimeconfig.json
+├── CavernPipeServer.deps.json
+├── CavernPipeServer.Logic.dll     # Patched logic
+├── Cavern.dll                     # Cavern engine
+├── Cavern.Format.dll              # Cavern formats
+├── CavernPipeClient.dll           # Client (built locally)
+├── CavernPipeClient.runtimeconfig.json
+├── CavernPipeClient.deps.json
+├── PipeToFifo.dll                 # FIFO bridge (built locally)
+├── PipeToFifo.runtimeconfig.json
+└── PipeToFifo.deps.json
+```
+
 ## Quick Start
 
-### 1. Build
+### 1. Build (if not using pre-built binaries)
 
 ```bash
 ./scripts/build.sh
@@ -129,6 +178,11 @@ Client                              Server
 ## Project Structure
 
 ```
+├── bin/                    # REQUIRED: Binaries (not in git, see Setup)
+│   ├── CavernPipeServer.dll
+│   ├── CavernPipeClient.dll
+│   ├── PipeToFifo.dll
+│   └── *.runtimeconfig.json
 ├── scripts/
 │   ├── run.sh              # Start infrastructure
 │   ├── play.sh             # Play media files
