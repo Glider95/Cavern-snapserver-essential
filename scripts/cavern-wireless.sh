@@ -304,6 +304,31 @@ start_snapserver() {
     echo $snap_pid
 }
 
+# Function to ensure snapserver config matches our output format
+ensure_snapserver_config() {
+    local expected_format="${SAMPLE_RATE}:${BIT_DEPTH}:${OUTPUT_CHANNELS}"
+    local current_format
+    
+    if [[ -f "$CONFIG_DIR/snapserver.conf" ]]; then
+        current_format=$(grep -o 'sampleformat=[0-9]\+:[0-9]\+:[0-9]\+' "$CONFIG_DIR/snapserver.conf" | cut -d= -f2 || echo "")
+        
+        if [[ "$current_format" != "$expected_format" ]]; then
+            log_info "Updating snapserver config: $current_format -> $expected_format"
+            sed -i.bak "s/sampleformat=[0-9]\+:[0-9]\+:[0-9]\+/sampleformat=$expected_format/" "$CONFIG_DIR/snapserver.conf"
+            rm -f "$CONFIG_DIR/snapserver.conf.bak"
+            
+            # Restart snapserver if running
+            if pgrep -x snapserver > /dev/null 2>&1; then
+                log_info "Restarting snapserver..."
+                pkill -x snapserver || true
+                sleep 0.5
+                snapserver -c "$CONFIG_DIR/snapserver.conf" > "$LOG_DIR/snapserver.log" 2>&1 &
+                sleep 1
+            fi
+        fi
+    fi
+}
+
 # Play audio file
 play_audio() {
     local audio_file="$1"
@@ -322,6 +347,9 @@ play_audio() {
         log_error "Please download binaries from: https://github.com/Glider95/Cavern-snapserver-essential/releases"
         exit 1
     fi
+    
+    # Ensure snapserver config matches our output format (prevents speed issues)
+    ensure_snapserver_config
     
     # Check if it's a DAMF file (file-based mode)
     if [[ "$ext" == "atmos" ]]; then

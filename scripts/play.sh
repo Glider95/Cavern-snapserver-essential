@@ -63,6 +63,35 @@ trap cleanup EXIT INT TERM
 
 mkdir -p "$LOG_DIR"
 
+# Function to ensure snapserver config matches our output format
+ensure_snapserver_config() {
+  local config_file="$ROOT_DIR/config/snapserver.conf"
+  local expected_format="${SAMPLE_RATE}:${BIT_DEPTH}:${OUTPUT_CHANNELS}"
+  local current_format
+  
+  if [ -f "$config_file" ]; then
+    current_format=$(grep -o 'sampleformat=[0-9]\+:[0-9]\+:[0-9]\+' "$config_file" | cut -d= -f2 || echo "")
+    
+    if [ "$current_format" != "$expected_format" ]; then
+      echo "[play] Updating snapserver config: $current_format -> $expected_format"
+      sed -i.bak "s/sampleformat=[0-9]\+:[0-9]\+:[0-9]\+/sampleformat=$expected_format/" "$config_file"
+      rm -f "$config_file.bak"
+      
+      # Restart snapserver if running
+      if pgrep -x snapserver > /dev/null 2>&1; then
+        echo "[play] Restarting snapserver..."
+        pkill -x snapserver || true
+        sleep 0.5
+        snapserver -c "$config_file" > "$LOG_DIR/snapserver.log" 2>&1 &
+        sleep 1
+      fi
+    fi
+  fi
+}
+
+# Ensure snapserver config matches before playing
+ensure_snapserver_config
+
 # Check if file is a DAMF file (for file-based mode)
 FILE_EXT="${FILE##*.}"
 if [ "$FILE_EXT" = "atmos" ]; then
