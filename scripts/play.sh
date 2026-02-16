@@ -190,8 +190,8 @@ if [ ! -f "$PIPETOFIFO_DLL" ]; then
   cd "$ROOT_DIR/src/PipeToFifo" && dotnet build --configuration Release
 fi
 
-# CavernPipeServer uses AudioReader.Open() which expects containerized files
-# Always use Matroska audio (.mka) as it supports all Dolby/DTS codecs
+# Cavern can decode Dolby formats (E-AC3, TrueHD, DTS) when reading files
+# Streaming mode is only for PCM data; Dolby formats need file-based mode
 TEMP_AUDIO="/tmp/cavern-temp-audio.$$.mka"
 
 cleanup_temp() {
@@ -212,9 +212,9 @@ if [ ! -f "$TEMP_AUDIO" ]; then
   exit 1
 fi
 
-echo "[play] Streaming through pipeline..."
-cat "$TEMP_AUDIO" \
-| dotnet "$CLIENT_DLL" "$OUTPUT_CHANNELS" "$SAMPLE_RATE" "$BIT_DEPTH" \
+# Use file-based mode for Cavern to decode E-AC3/TrueHD/DTS properly
+echo "[play] Sending to Cavern for Dolby decoding..."
+dotnet "$CLIENT_DLL" -f "$TEMP_AUDIO" "$OUTPUT_CHANNELS" "$BIT_DEPTH" \
   2>"$LOG_DIR/client.log" \
 | dotnet "$PIPETOFIFO_DLL" "$FIFO" \
   2>"$LOG_DIR/fifo.log"
