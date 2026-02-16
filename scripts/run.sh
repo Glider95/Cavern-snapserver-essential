@@ -75,13 +75,13 @@ sed -i.bak "s/sampleformat=[0-9]\+:[0-9]\+:[0-9]\+/sampleformat=$SAMPLEFORMAT/" 
   sed -i '' "s/sampleformat=[0-9]\+:[0-9]\+:[0-9]\+/sampleformat=$SAMPLEFORMAT/" "$ROOT_DIR/config/snapserver.conf"
 
 # Set codec based on channel count
-# Note: Opus supports 255 channels, but snapserver's implementation only supports stereo (2ch)
+# Opus = stereo only in snapserver, Ogg (Vorbis) = up to 255ch, PCM = uncompressed fallback
 if [ "$OUTPUT_CHANNELS" -le 2 ]; then
     CODEC="opus"
     echo "[run] Using Opus codec (stereo)"
 else
-    CODEC="pcm"
-    echo "[run] Using PCM codec (multichannel $OUTPUT_CHANNELS ch) - snapserver Opus limited to stereo"
+    CODEC="ogg"
+    echo "[run] Using Ogg/Vorbis codec (multichannel $OUTPUT_CHANNELS ch, up to 255ch supported)"
 fi
 
 # Update global codec setting

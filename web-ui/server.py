@@ -572,11 +572,11 @@ def update_snapserver_config():
                 content
             )
         
-        # Set codec based on channel count (snapserver Opus = stereo only, PCM = multichannel)
+        # Set codec based on channel count (Opus = stereo, Ogg = up to 255ch)
         if channels <= 2:
             new_codec = 'opus'
         else:
-            new_codec = 'pcm'
+            new_codec = 'ogg'
         
         # Update codec - both global setting AND source URL
         content = re.sub(r'^codec = \w+', f'codec = {new_codec}', content, flags=re.MULTILINE)
