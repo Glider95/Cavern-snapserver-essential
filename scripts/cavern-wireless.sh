@@ -316,13 +316,13 @@ ensure_snapserver_config() {
             log_info "Updating snapserver config: $current_format -> $expected_format"
             sed -i.bak "s/sampleformat=[0-9]\+:[0-9]\+:[0-9]\+/sampleformat=$expected_format/" "$CONFIG_DIR/snapserver.conf"
             
-            # Set codec based on channel count (Opus = stereo, Ogg = up to 255ch)
-            if [[ "$OUTPUT_CHANNELS" -le 2 ]]; then
-                local codec="opus"
+            # Set codec: FLAC for up to 8 channels, PCM for more
+            if [[ "$OUTPUT_CHANNELS" -le 8 ]]; then
+                local codec="flac"
             else
-                local codec="ogg"
+                local codec="pcm"
             fi
-            sed -i.bak 's|source = pipe:///tmp/snapcast-out[^&]*|source = pipe:///tmp/snapcast-out?name=Cavern\&codec='$codec'\&sampleformat='$expected_format'|' "$CONFIG_DIR/snapserver.conf"
+            sed -i.bak "s|^source = pipe:///tmp/snapcast-out.*|source = pipe:///tmp/snapcast-out?name=Cavern\&codec=$codec\&sampleformat=$expected_format|" "$CONFIG_DIR/snapserver.conf"
             
             rm -f "$CONFIG_DIR/snapserver.conf.bak"
             

@@ -554,40 +554,24 @@ def update_snapserver_config():
         rate = CURRENT_CONFIG['sample_rate']
         depth = CURRENT_CONFIG['bit_depth']
         
-        # Replace or add sampleformat
+        # Determine codec based on channel count
+        # FLAC: up to 8 channels, PCM: 9+ channels (for single stream)
+        if channels <= 8:
+            new_codec = 'flac'
+        else:
+            new_codec = 'pcm'
+        
+        # Replace entire source line to avoid parameter accumulation
         import re
-        pattern = r'sampleformat=\d+:\d+:\d+'
-        replacement = f'sampleformat={rate}:{depth}:{channels}'
+        new_source = f'source = pipe:///tmp/snapcast-out?name=Cavern&codec={new_codec}&sampleformat={rate}:{depth}:{channels}'
+        content = re.sub(r'^source = pipe:///tmp/snapcast-out.*', new_source, content, flags=re.MULTILINE)
         
-        old_config = re.search(pattern, content)
-        new_config_str = f'sampleformat={rate}:{depth}:{channels}'
-        
-        if old_config:
-            content = re.sub(pattern, replacement, content)
-        else:
-            # Add to source line
-            content = re.sub(
-                r'(source = pipe:///tmp/snapcast-out[^&]*)',
-                rf'\1&{replacement}',
-                content
-            )
-        
-        # Set codec based on channel count (Opus = stereo, Ogg = up to 255ch)
-        if channels <= 2:
-            new_codec = 'opus'
-        else:
-            new_codec = 'ogg'
-        
-        # Update codec - both global setting AND source URL
+        # Update global codec setting
         content = re.sub(r'^codec = \w+', f'codec = {new_codec}', content, flags=re.MULTILINE)
         
-        # Also update source URL with correct codec
-        # Match source = pipe:///tmp/snapcast-out?name=Cavern&... and set codec
-        content = re.sub(
-            r'(source = pipe:///tmp/snapcast-out\?name=Cavern)(?:&codec=\w+)?(&.*)?',
-            rf'\1&codec={new_codec}\2',
-            content
-        )
+        # Check for changes
+        old_config = re.search(r'sampleformat=\d+:\d+:\d+', content)
+        new_config_str = f'sampleformat={rate}:{depth}:{channels}'
         
         with open(config_path, 'w') as f:
             f.write(content)

@@ -74,23 +74,22 @@ echo "[run] Setting snapserver format: $SAMPLEFORMAT"
 sed -i.bak "s/sampleformat=[0-9]\+:[0-9]\+:[0-9]\+/sampleformat=$SAMPLEFORMAT/" "$ROOT_DIR/config/snapserver.conf" 2>/dev/null || \
   sed -i '' "s/sampleformat=[0-9]\+:[0-9]\+:[0-9]\+/sampleformat=$SAMPLEFORMAT/" "$ROOT_DIR/config/snapserver.conf"
 
-# Set codec based on channel count
-# Opus = stereo only in snapserver, Ogg (Vorbis) = up to 255ch, PCM = uncompressed fallback
-if [ "$OUTPUT_CHANNELS" -le 2 ]; then
-    CODEC="opus"
-    echo "[run] Using Opus codec (stereo)"
+# Set codec: flac for up to 8 channels, PCM for more
+if [ "$OUTPUT_CHANNELS" -le 8 ]; then
+    CODEC="flac"
+    echo "[run] Using flac codec (stereo)"
 else
-    CODEC="ogg"
-    echo "[run] Using Ogg/Vorbis codec (multichannel $OUTPUT_CHANNELS ch, up to 255ch supported)"
+    CODEC="pcm"
+    echo "[run] Using PCM codec ($OUTPUT_CHANNELS ch) - HIGH BANDWIDTH"
 fi
 
 # Update global codec setting
 sed -i.bak "s/^codec = .*/codec = $CODEC/" "$ROOT_DIR/config/snapserver.conf" 2>/dev/null || \
   sed -i '' "s/^codec = .*/codec = $CODEC/" "$ROOT_DIR/config/snapserver.conf"
 
-# Update source URL with correct codec and sampleformat
-sed -i.bak 's|source = pipe:///tmp/snapcast-out[^&]*|source = pipe:///tmp/snapcast-out?name=Cavern\&codec='$CODEC'\&sampleformat='$SAMPLEFORMAT'|' "$ROOT_DIR/config/snapserver.conf" 2>/dev/null || \
-  sed -i '' 's|source = pipe:///tmp/snapcast-out[^&]*|source = pipe:///tmp/snapcast-out?name=Cavern\&codec='$CODEC'\&sampleformat='$SAMPLEFORMAT'|' "$ROOT_DIR/config/snapserver.conf"
+# Update source URL - replace entire line to avoid parameter accumulation
+sed -i.bak "s|^source = pipe:///tmp/snapcast-out.*|source = pipe:///tmp/snapcast-out?name=Cavern\&codec=$CODEC\&sampleformat=$SAMPLEFORMAT|" "$ROOT_DIR/config/snapserver.conf" 2>/dev/null || \
+  sed -i '' "s|^source = pipe:///tmp/snapcast-out.*|source = pipe:///tmp/snapcast-out?name=Cavern\&codec=$CODEC\&sampleformat=$SAMPLEFORMAT|" "$ROOT_DIR/config/snapserver.conf"
 
 # Start Snapserver
 echo "[run] Starting Snapserver..."
