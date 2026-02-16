@@ -554,9 +554,6 @@ def update_snapserver_config():
         rate = CURRENT_CONFIG['sample_rate']
         depth = CURRENT_CONFIG['bit_depth']
         
-        # Standardized on Opus for all channel counts (WiFi efficiency)
-        new_codec = 'opus'
-        
         # Replace or add sampleformat
         import re
         pattern = r'sampleformat=\d+:\d+:\d+'
@@ -575,11 +572,17 @@ def update_snapserver_config():
                 content
             )
         
-        # Update codec to Opus (standard) - both global setting AND source URL
+        # Set codec based on channel count (snapserver Opus = stereo only, PCM = multichannel)
+        if channels <= 2:
+            new_codec = 'opus'
+        else:
+            new_codec = 'pcm'
+        
+        # Update codec - both global setting AND source URL
         content = re.sub(r'^codec = \w+', f'codec = {new_codec}', content, flags=re.MULTILINE)
         
-        # Also update source URL to include codec=opus (snapserver may ignore global codec setting)
-        # Match source = pipe:///tmp/snapcast-out?name=Cavern&... and ensure codec=opus is set
+        # Also update source URL with correct codec
+        # Match source = pipe:///tmp/snapcast-out?name=Cavern&... and set codec
         content = re.sub(
             r'(source = pipe:///tmp/snapcast-out\?name=Cavern)(?:&codec=\w+)?(&.*)?',
             rf'\1&codec={new_codec}\2',
@@ -601,7 +604,7 @@ def update_snapserver_config():
         
         # Restart snapserver if needed - even if not started by us (may have been started by run.sh)
         if restart_needed:
-            log(f'Restarting snapserver for new format: {channels}ch @ {rate}Hz (Opus)', 'info')
+            log(f'Restarting snapserver for new format: {channels}ch @ {rate}Hz ({new_codec})', 'info')
             try:
                 # Stop existing snapserver (whether started by us or run.sh)
                 snapserver_stopped = False
@@ -646,7 +649,7 @@ def update_snapserver_config():
             except Exception as restart_err:
                 log(f'Failed to restart snapserver: {restart_err}', 'error')
         else:
-            log(f'Updated config: {channels}ch @ {rate}Hz, {depth}-bit (Opus)', 'info')
+            log(f'Updated config: {channels}ch @ {rate}Hz, {depth}-bit ({new_codec})', 'info')
             
     except Exception as e:
         log(f'Config update error: {e}', 'warn')

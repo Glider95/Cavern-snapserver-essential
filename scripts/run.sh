@@ -74,15 +74,23 @@ echo "[run] Setting snapserver format: $SAMPLEFORMAT"
 sed -i.bak "s/sampleformat=[0-9]\+:[0-9]\+:[0-9]\+/sampleformat=$SAMPLEFORMAT/" "$ROOT_DIR/config/snapserver.conf" 2>/dev/null || \
   sed -i '' "s/sampleformat=[0-9]\+:[0-9]\+:[0-9]\+/sampleformat=$SAMPLEFORMAT/" "$ROOT_DIR/config/snapserver.conf"
 
-# Ensure Opus codec is set in both global config AND source URL (standard for this project)
-CODEC="opus"
-echo "[run] Using Opus codec (standardized for WiFi streaming)"
+# Set codec based on channel count
+# Note: Opus supports 255 channels, but snapserver's implementation only supports stereo (2ch)
+if [ "$OUTPUT_CHANNELS" -le 2 ]; then
+    CODEC="opus"
+    echo "[run] Using Opus codec (stereo)"
+else
+    CODEC="pcm"
+    echo "[run] Using PCM codec (multichannel $OUTPUT_CHANNELS ch) - snapserver Opus limited to stereo"
+fi
+
+# Update global codec setting
 sed -i.bak "s/^codec = .*/codec = $CODEC/" "$ROOT_DIR/config/snapserver.conf" 2>/dev/null || \
   sed -i '' "s/^codec = .*/codec = $CODEC/" "$ROOT_DIR/config/snapserver.conf"
 
-# Also update source URL to include codec=opus (snapserver may ignore global codec setting)
-sed -i.bak 's|source = pipe:///tmp/snapcast-out[^&]*|source = pipe:///tmp/snapcast-out?name=Cavern\&codec=opus\&sampleformat='$SAMPLEFORMAT'|' "$ROOT_DIR/config/snapserver.conf" 2>/dev/null || \
-  sed -i '' 's|source = pipe:///tmp/snapcast-out[^&]*|source = pipe:///tmp/snapcast-out?name=Cavern\&codec=opus\&sampleformat='$SAMPLEFORMAT'|' "$ROOT_DIR/config/snapserver.conf"
+# Update source URL with correct codec and sampleformat
+sed -i.bak 's|source = pipe:///tmp/snapcast-out[^&]*|source = pipe:///tmp/snapcast-out?name=Cavern\&codec='$CODEC'\&sampleformat='$SAMPLEFORMAT'|' "$ROOT_DIR/config/snapserver.conf" 2>/dev/null || \
+  sed -i '' 's|source = pipe:///tmp/snapcast-out[^&]*|source = pipe:///tmp/snapcast-out?name=Cavern\&codec='$CODEC'\&sampleformat='$SAMPLEFORMAT'|' "$ROOT_DIR/config/snapserver.conf"
 
 # Start Snapserver
 echo "[run] Starting Snapserver..."

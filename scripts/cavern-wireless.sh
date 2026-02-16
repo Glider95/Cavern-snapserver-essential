@@ -316,8 +316,13 @@ ensure_snapserver_config() {
             log_info "Updating snapserver config: $current_format -> $expected_format"
             sed -i.bak "s/sampleformat=[0-9]\+:[0-9]\+:[0-9]\+/sampleformat=$expected_format/" "$CONFIG_DIR/snapserver.conf"
             
-            # Also update source URL with opus codec and correct sampleformat
-            sed -i.bak 's|source = pipe:///tmp/snapcast-out[^&]*|source = pipe:///tmp/snapcast-out?name=Cavern\&codec=opus\&sampleformat='$expected_format'|' "$CONFIG_DIR/snapserver.conf"
+            # Set codec based on channel count (snapserver Opus = stereo only, PCM = multichannel)
+            if [[ "$OUTPUT_CHANNELS" -le 2 ]]; then
+                local codec="opus"
+            else
+                local codec="pcm"
+            fi
+            sed -i.bak 's|source = pipe:///tmp/snapcast-out[^&]*|source = pipe:///tmp/snapcast-out?name=Cavern\&codec='$codec'\&sampleformat='$expected_format'|' "$CONFIG_DIR/snapserver.conf"
             
             rm -f "$CONFIG_DIR/snapserver.conf.bak"
             
