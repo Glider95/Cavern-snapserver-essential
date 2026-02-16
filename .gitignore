@@ -26,3 +26,8 @@ Thumbs.db
 /tmp/
 *.tmp
 *.temp
+
+# Python virtual environment
+.venv/
+venv/
+ENV/

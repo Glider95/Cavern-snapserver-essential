@@ -168,7 +168,8 @@ class Program
         // Send handshake - NEGATIVE UpdateRate indicates file-based mode
         byte[] handshake = CreateHandshake(bitDepth, outputChannels, -DefaultUpdateRate);
         await stream.WriteAsync(handshake, 0, handshake.Length);
-        Console.Error.WriteLine($"[CavernPipeClient] Handshake sent (file mode)");
+        Console.Error.WriteLine($"[CavernPipeClient] Handshake bytes: {BitConverter.ToString(handshake)}");
+        Console.Error.WriteLine($"[CavernPipeClient] Handshake: depth={bitDepth}({handshake[0]}), ch={outputChannels}, rate={-DefaultUpdateRate}");
 
         // Send file path (length-prefixed)
         string fullPath = Path.GetFullPath(audioFile);

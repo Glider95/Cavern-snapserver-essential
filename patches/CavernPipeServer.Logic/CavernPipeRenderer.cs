@@ -114,9 +114,15 @@ public class CavernPipeRenderer : IDisposable {
             // Get sample rate AFTER renderer is created
             int sampleRate = reader.SampleRate;
             if (sampleRate <= 0) sampleRate = 48000;
+            bool isFileBased = Protocol.IsFileBasedMode;
             
-            Console.Error.WriteLine($"[CavernPipeRenderer] Audio source: {sampleRate}Hz");
-            Console.Error.WriteLine($"[CavernPipeRenderer] Output config: {Protocol.OutputChannels}ch, UpdateRate={updateRate}, Format={Protocol.OutputFormat}");
+            Console.Error.WriteLine($"[CavernPipeRenderer] === RENDER CONFIG ===");
+            Console.Error.WriteLine($"  Input file: {sampleRate}Hz, {reader.Length} samples");
+            Console.Error.WriteLine($"  File-based mode: {isFileBased}");
+            Console.Error.WriteLine($"  Protocol: {Protocol.OutputChannels}ch, UpdateRate={Protocol.UpdateRate}, AbsRate={updateRate}");
+            Console.Error.WriteLine($"  BitDepth: {Protocol.OutputFormat} ({(int)Protocol.OutputFormat}-bit)");
+            Console.Error.WriteLine($"  Listener SampleRate: {sampleRate}");
+            Console.Error.WriteLine($"  ====================");
             
             // Configure output channel count based on client request
             if (Listener.Channels.Length != Protocol.OutputChannels) {
@@ -140,7 +146,6 @@ public class CavernPipeRenderer : IDisposable {
 
             long samplesRendered = 0;
             long totalSamples = reader.Length;
-            bool isFileBased = Protocol.IsFileBasedMode;
             
             // When this writer is used without writing a header, it's a BitDepth converter from float to anything, and can dump to streams.
             // Use actual total samples for length to prevent write issues
