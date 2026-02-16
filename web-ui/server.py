@@ -580,20 +580,42 @@ def update_snapserver_config():
         
         with open(config_path, 'w') as f:
             f.write(content)
+            f.flush()
+            os.fsync(f.fileno())  # Ensure config is written to disk before snapserver reads it
         
         # Check if we need to restart snapserver
-        restart_needed = old_config and old_config.group(0) != new_config_str
+        # Check both sampleformat AND codec changes
+        sampleformat_changed = old_config and old_config.group(0) != new_config_str
+        old_codec_match = re.search(r'^codec = (\w+)', content, flags=re.MULTILINE)
+        old_codec = old_codec_match.group(1) if old_codec_match else 'unknown'
+        codec_changed = old_codec != new_codec
+        restart_needed = sampleformat_changed or codec_changed
         
-        if restart_needed and pipeline_processes.get('snapserver'):
+        # Restart snapserver if needed - even if not started by us (may have been started by run.sh)
+        if restart_needed:
             log(f'Restarting snapserver for new format: {channels}ch @ {rate}Hz (Opus)', 'info')
             try:
-                # Stop existing snapserver
-                pipeline_processes['snapserver'].terminate()
-                try:
-                    pipeline_processes['snapserver'].wait(timeout=2)
-                except subprocess.TimeoutExpired:
-                    pipeline_processes['snapserver'].kill()
-                    pipeline_processes['snapserver'].wait(timeout=1)
+                # Stop existing snapserver (whether started by us or run.sh)
+                snapserver_stopped = False
+                if pipeline_processes.get('snapserver'):
+                    try:
+                        pipeline_processes['snapserver'].terminate()
+                        pipeline_processes['snapserver'].wait(timeout=2)
+                        snapserver_stopped = True
+                    except subprocess.TimeoutExpired:
+                        pipeline_processes['snapserver'].kill()
+                        pipeline_processes['snapserver'].wait(timeout=1)
+                        snapserver_stopped = True
+                    except Exception:
+                        pass
+                
+                # Also try to kill any system snapserver if not stopped
+                if not snapserver_stopped:
+                    try:
+                        subprocess.run(['pkill', '-x', 'snapserver'], check=False, capture_output=True)
+                        time.sleep(0.5)
+                    except Exception:
+                        pass
                 
                 # Remove old FIFO and recreate
                 if os.path.exists(FIFO_PATH):
