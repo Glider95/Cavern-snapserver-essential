@@ -89,6 +89,7 @@ public class CavernPipeRenderer : IDisposable {
     /// Wait for enough input stream data and render the next set of samples, of which the count will be <see cref="Listener.UpdateRate"/> per channel.
     /// </summary>
     void RenderThread() {
+        RIFFWaveWriter streamDumper = null;
         try {
             Stream audioSource;
             int updateRate;
@@ -113,6 +114,9 @@ public class CavernPipeRenderer : IDisposable {
             // Get sample rate AFTER renderer is created
             int sampleRate = reader.SampleRate;
             if (sampleRate <= 0) sampleRate = 48000;
+            
+            Console.Error.WriteLine($"[CavernPipeRenderer] Audio source: {sampleRate}Hz");
+            Console.Error.WriteLine($"[CavernPipeRenderer] Output config: {Protocol.OutputChannels}ch, UpdateRate={updateRate}, Format={Protocol.OutputFormat}");
             
             // Configure output channel count based on client request
             if (Listener.Channels.Length != Protocol.OutputChannels) {
@@ -143,30 +147,51 @@ public class CavernPipeRenderer : IDisposable {
             long outputLength = isFileBased ? totalSamples : long.MaxValue;
             // Wrap Output in a non-closing stream so disposing RIFFWaveWriter doesn't close Output
             using var nonClosingOutput = new NonClosingStreamWrapper(Output);
-            RIFFWaveWriter streamDumper = new RIFFWaveWriter(nonClosingOutput, Protocol.OutputChannels, outputLength, sampleRate, Protocol.OutputFormat);
+            
+            try {
+                streamDumper = new RIFFWaveWriter(nonClosingOutput, Protocol.OutputChannels, outputLength, sampleRate, Protocol.OutputFormat);
+            } catch (Exception writerEx) {
+                Console.Error.WriteLine($"[CavernPipeRenderer] Failed to create RIFFWaveWriter: {writerEx.Message}");
+                Dispose();
+                OnException?.Invoke(writerEx);
+                return;
+            }
             
             while (Input != null) {
-                float[] render = listener.Render();
-                UpdateMeters(render);
-                
-                if (reRender == null) {
-                    streamDumper.WriteBlock(render, 0, render.LongLength);
-                } else {
-                    Array.Clear(reRender);
-                    WaveformUtils.Downmix(render, reRender, updateRate);
-                    streamDumper.WriteBlock(reRender, 0, reRender.LongLength);
-                }
-                
-                samplesRendered += updateRate;
-                
-                // For file-based mode, stop when we've rendered all samples
-                if (isFileBased && samplesRendered >= totalSamples) {
+                try {
+                    float[] render = listener.Render();
+                    UpdateMeters(render);
+                    
+                    if (reRender == null) {
+                        streamDumper.WriteBlock(render, 0, render.LongLength);
+                    } else {
+                        Array.Clear(reRender);
+                        WaveformUtils.Downmix(render, reRender, updateRate);
+                        streamDumper.WriteBlock(reRender, 0, reRender.LongLength);
+                    }
+                    
+                    samplesRendered += updateRate;
+                    
+                    // For file-based mode, stop when we've rendered all samples
+                    if (isFileBased && samplesRendered >= totalSamples) {
+                        break;
+                    }
+                } catch (Exception loopEx) {
+                    // Log but don't crash - allow clean shutdown
+                    Console.Error.WriteLine($"[CavernPipeRenderer] Render loop error: {loopEx.Message}");
                     break;
                 }
             }
         } catch (Exception e) {
+            Console.Error.WriteLine($"[CavernPipeRenderer] Fatal error: {e.GetType().Name}: {e.Message}");
+            Console.Error.WriteLine($"[CavernPipeRenderer] Stack trace: {e.StackTrace}");
             Dispose();
             OnException?.Invoke(e);
+        } finally {
+            // Ensure we clean up properly
+            try {
+                streamDumper?.Dispose();
+            } catch { }
         }
     }
 

@@ -47,5 +47,13 @@ public class CavernPipeProtocol {
         if (UpdateRate == 0) throw new SyncException();
         int absRate = UpdateRate < 0 ? -UpdateRate : UpdateRate;
         MandatoryBytesToSend = mandatoryFrames * OutputChannels * absRate * ((int)OutputFormat / 8);
+        
+        // Debug logging
+        Console.Error.WriteLine($"[CavernPipeProtocol] Handshake received:");
+        Console.Error.WriteLine($"  OutputFormat: {OutputFormat} ({(int)OutputFormat}-bit)");
+        Console.Error.WriteLine($"  OutputChannels: {OutputChannels}");
+        Console.Error.WriteLine($"  UpdateRate: {UpdateRate} (abs: {absRate})");
+        Console.Error.WriteLine($"  MandatoryBytesToSend: {MandatoryBytesToSend}");
+        Console.Error.WriteLine($"  IsFileBasedMode: {IsFileBasedMode}");
     }
 }

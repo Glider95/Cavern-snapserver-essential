@@ -1,0 +1,1441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CavernPipe Control Panel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 30px 0;
+            border-bottom: 2px solid #16213e;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #888;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+        }
+        
+        .card {
+            background: #16213e;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        
+        .status-running { background: #4ade80; box-shadow: 0 0 10px #4ade80; }
+        .status-stopped { background: #ef4444; }
+        .status-unknown { background: #fbbf24; }
+        .status-converting { background: #3b82f6; animation: pulse 1s infinite; }
+        .status-playing { background: #10b981; animation: pulse 0.5s infinite; }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #2a2a4a;
+        }
+        
+        .status-row:last-child {
+            border-bottom: none;
+        }
+        
+        .status-label {
+            color: #888;
+        }
+        
+        .status-value {
+            font-family: monospace;
+            color: #fff;
+        }
+        
+        .status-value.error { color: #ef4444; }
+        .status-value.success { color: #4ade80; }
+        .status-value.warning { color: #fbbf24; }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin: 5px;
+        }
+        
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active:not(:disabled) {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        button.secondary {
+            background: #2a2a4a;
+        }
+        
+        button.secondary:hover:not(:disabled) {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        button.danger {
+            background: #ef4444;
+        }
+        
+        button.success {
+            background: #10b981;
+        }
+        
+        button.large {
+            padding: 16px 32px;
+            font-size: 16px;
+        }
+        
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .button-group.center {
+            justify-content: center;
+        }
+        
+        .vu-meter {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 4px;
+            height: 150px;
+            padding: 20px;
+            background: #0a0a1a;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+        
+        .vu-channel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .vu-bar-container {
+            width: 24px;
+            height: 120px;
+            background: #2a2a4a;
+            border-radius: 3px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .vu-bar {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background: linear-gradient(to top, #4ade80 0%, #4ade80 60%, #fbbf24 80%, #ef4444 100%);
+            transition: height 0.05s ease-out;
+            min-height: 2px;
+        }
+        
+        .vu-label {
+            font-size: 10px;
+            color: #888;
+            text-align: center;
+        }
+        
+        .speaker-viz {
+            width: 100%;
+            height: 300px;
+            background: #0a0a1a;
+            border-radius: 8px;
+            margin-top: 15px;
+            position: relative;
+        }
+        
+        .log-container {
+            background: #0a0a1a;
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+            height: 200px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+        
+        .log-entry {
+            padding: 2px 0;
+            border-bottom: 1px solid #1a1a2e;
+        }
+        
+        .log-entry.error { color: #ef4444; }
+        .log-entry.warn { color: #fbbf24; }
+        .log-entry.info { color: #4ade80; }
+        
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+        
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+        
+        select, input[type="text"], input[type="number"] {
+            background: #2a2a4a;
+            color: white;
+            border: 1px solid #3a3a5a;
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-size: 14px;
+            width: 100%;
+            margin-top: 10px;
+        }
+        
+        .config-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .config-item label {
+            display: block;
+            color: #888;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+        
+        .config-item input, .config-item select {
+            width: 100%;
+            padding: 8px 12px;
+            background: #2a2a4a;
+            border: 1px solid #3a3a5a;
+            border-radius: 4px;
+            color: white;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #2a2a4a;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s;
+        }
+        
+        .conversion-status {
+            background: #1a1a3e;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        
+        .conversion-status.hidden {
+            display: none;
+        }
+        
+        .codec-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .codec-truehd { background: #ef4444; color: white; }
+        .codec-eac3 { background: #f59e0b; color: black; }
+        .codec-flac { background: #10b981; color: white; }
+        .codec-wav { background: #10b981; color: white; }
+        .codec-unknown { background: #6b7280; color: white; }
+        
+        .tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #2a2a4a;
+            padding-bottom: 10px;
+        }
+        
+        .tab {
+            background: transparent;
+            border: 1px solid #3a3a5a;
+            color: #888;
+            padding: 8px 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .tab.active {
+            background: #667eea;
+            border-color: #667eea;
+            color: white;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .streaming-options {
+            background: #1a1a3e;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+        
+        .error-message {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid #ef4444;
+            border-radius: 6px;
+            padding: 10px;
+            margin-top: 10px;
+            color: #fca5a5;
+            display: none;
+        }
+        
+        .error-message.visible {
+            display: block;
+        }
+        
+        .quick-play-section {
+            background: linear-gradient(135deg, #1a1a3e 0%, #2a2a5e 100%);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 15px;
+            text-align: center;
+        }
+        
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            .config-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔊 CavernPipe Control Panel</h1>
+            <p class="subtitle">Spatial Audio Pipeline with TrueHD Support</p>
+        </header>
+        
+        <div class="grid">
+            <!-- Pipeline Status -->
+            <div class="card">
+                <h2>
+                    <span id="status-dot" class="status-indicator status-unknown"></span>
+                    Pipeline Status
+                </h2>
+                <div class="status-row">
+                    <span class="status-label">CavernPipeServer</span>
+                    <span id="cavern-status" class="status-value">Checking...</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Snapserver</span>
+                    <span id="snap-status" class="status-value">Checking...</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">FIFO Status</span>
+                    <span id="fifo-status" class="status-value">-</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Active Clients</span>
+                    <span id="client-count" class="status-value">0</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Current File</span>
+                    <span id="current-file" class="status-value">-</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Playback Status</span>
+                    <span id="playback-status" class="status-value">Idle</span>
+                </div>
+                
+                <div id="error-display" class="error-message"></div>
+                
+                <div class="button-group center">
+                    <button id="btn-start" onclick="startPipeline()">▶ Start Pipeline</button>
+                    <button id="btn-stop" class="danger" onclick="stopPipeline()">⏹ Stop All</button>
+                    <button class="secondary" onclick="refreshStatus()">🔄 Refresh</button>
+                </div>
+            </div>
+            
+            <!-- Quick Play -->
+            <div class="card">
+                <h2>🚀 Quick Play</h2>
+                <p style="color: #888; font-size: 14px; margin-bottom: 15px;">
+                    Enter a file path and click Play to start everything automatically.
+                </p>
+                
+                <div class="quick-play-section">
+                    <input type="text" id="quick-play-file" placeholder="/path/to/movie.mkv" 
+                           style="width: 100%; margin-bottom: 15px; font-size: 16px; padding: 12px;">
+                    
+                    <div class="button-group center">
+                        <button class="large success" onclick="quickPlay()">▶ Start & Play</button>
+                        <button class="secondary" onclick="analyzeFile()">🔍 Analyze</button>
+                    </div>
+                </div>
+                
+                <div id="quick-analysis" style="margin-top: 15px; display: none;">
+                    <div class="status-row">
+                        <span class="status-label">Detected Codec</span>
+                        <span id="quick-codec" class="codec-badge codec-unknown">Unknown</span>
+                    </div>
+                    <div id="quick-cache-info" style="display: none; margin-top: 10px; padding: 10px; 
+                         background: rgba(16, 185, 129, 0.2); border-radius: 6px; color: #6ee7b7;">
+                        ✅ Cached version available - will play instantly
+                    </div>
+                    <div id="quick-convert-warning" style="display: none; margin-top: 10px; padding: 10px;
+                         background: rgba(239, 68, 68, 0.2); border-radius: 6px; color: #fca5a5;">
+                        ⚠️ TrueHD file - conversion required (one-time)
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Playback Control (Detailed) -->
+            <div class="card">
+                <h2>▶️ Playback Control</h2>
+                
+                <div class="tabs">
+                    <button class="tab active" onclick="switchTab('file')">📁 File</button>
+                    <button class="tab" onclick="switchTab('stream')">📡 Stream</button>
+                </div>
+                
+                <!-- File Tab -->
+                <div id="tab-file" class="tab-content active">
+                    <div class="config-row">
+                        <div class="config-item" style="grid-column: 1 / -1;">
+                            <label>Media File</label>
+                            <input type="text" id="media-file" placeholder="/path/to/movie.mkv" style="width: 100%;">
+                        </div>
+                    </div>
+                    
+                    <div id="file-analysis" style="margin-top: 15px; display: none;">
+                        <div class="status-row">
+                            <span class="status-label">Detected Codec</span>
+                            <span id="detected-codec" class="codec-badge codec-unknown">Unknown</span>
+                        </div>
+                        <div id="conversion-warning" style="display: none; margin-top: 10px; padding: 10px; background: rgba(239, 68, 68, 0.2); border-radius: 6px; color: #fca5a5;">
+                            ⚠️ TrueHD files need conversion before playback
+                        </div>
+                        <div id="cache-info" style="display: none; margin-top: 10px; padding: 10px; background: rgba(16, 185, 129, 0.2); border-radius: 6px; color: #6ee7b7;">
+                            ✅ Cached version available
+                        </div>
+                    </div>
+                    
+                    <div id="conversion-status" class="conversion-status hidden">
+                        <div class="status-row">
+                            <span class="status-label">Conversion</span>
+                            <span id="conversion-stage">Preparing...</span>
+                        </div>
+                        <div class="progress-bar" style="margin-top: 10px;">
+                            <div id="conversion-progress" class="progress-fill" style="width: 0%"></div>
+                        </div>
+                        <p id="conversion-message" style="margin-top: 10px; font-size: 12px; color: #888;">Starting...</p>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button onclick="analyzeFile()">🔍 Analyze</button>
+                        <button id="btn-convert" class="secondary" onclick="convertFile()" style="display: none;">🔄 Convert TrueHD</button>
+                        <button class="success" onclick="playFile()">▶ Play File</button>
+                        <button class="danger" onclick="stopPlayback()">⏹ Stop</button>
+                        <div class="file-input-wrapper">
+                            <button class="secondary">Browse...</button>
+                            <input type="file" id="file-browser" accept="video/*,audio/*" onchange="fileSelected(event)">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Stream Tab -->
+                <div id="tab-stream" class="tab-content">
+                    <div class="streaming-options">
+                        <div class="config-row">
+                            <div class="config-item" style="grid-column: 1 / -1;">
+                                <label>Stream Source</label>
+                                <select id="stream-source" onchange="updateStreamOptions()">
+                                    <option value="system">System Audio (BlackHole/PulseAudio)</option>
+                                    <option value="url">URL Stream</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div id="url-input" style="display: none; margin-top: 10px;">
+                            <label>Stream URL</label>
+                            <input type="text" id="stream-url" placeholder="http://example.com/stream.mp3" style="width: 100%;">
+                        </div>
+                        
+                        <p style="margin-top: 15px; font-size: 12px; color: #888;">
+                            💡 For system audio, set BlackHole/PulseAudio as your default output device
+                        </p>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button class="success" onclick="startStreaming()">📡 Start Streaming</button>
+                        <button class="danger" onclick="stopPlayback()">⏹ Stop</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Audio Configuration -->
+            <div class="card">
+                <h2>⚙️ Audio Configuration</h2>
+                <div class="config-row">
+                    <div class="config-item">
+                        <label>Speaker Layout</label>
+                        <select id="speaker-layout" onchange="updateLayout()">
+                            <option value="surround_51">5.1 Surround</option>
+                            <option value="surround_71">7.1 Surround</option>
+                            <option value="surround_712">7.1.2 Atmos</option>
+                            <option value="surround_714">7.1.4 Atmos</option>
+                            <option value="stereo">Stereo 2.0</option>
+                            <option value="quad">Quadraphonic 4.0</option>
+                        </select>
+                    </div>
+                    <div class="config-item">
+                        <label>Sample Rate</label>
+                        <select id="sample-rate">
+                            <option value="48000" selected>48 kHz</option>
+                            <option value="44100">44.1 kHz</option>
+                            <option value="96000">96 kHz</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="config-row">
+                    <div class="config-item">
+                        <label>Bit Depth</label>
+                        <select id="bit-depth">
+                            <option value="16" selected>16-bit</option>
+                            <option value="24">24-bit</option>
+                        </select>
+                    </div>
+                    <div class="config-item">
+                        <label>Output Channels</label>
+                        <input type="number" id="output-channels" value="6" min="2" max="16">
+                    </div>
+                </div>
+                
+                <div class="button-group">
+                    <button onclick="applyConfig()">Apply Configuration</button>
+                    <button class="secondary" onclick="visualizeLayout()">Visualize Layout</button>
+                </div>
+            </div>
+            
+            <!-- VU Meters -->
+            <div class="card">
+                <h2>📊 Channel Meters</h2>
+                <div class="vu-meter" id="vu-meters"></div>
+                <div class="button-group">
+                    <button onclick="startMeters()">▶ Start Meters</button>
+                    <button class="secondary" onclick="stopMeters()">⏹ Stop</button>
+                </div>
+            </div>
+            
+            <!-- Speaker Visualization -->
+            <div class="card">
+                <h2>🔈 Speaker Layout</h2>
+                <canvas id="speaker-canvas" class="speaker-viz"></canvas>
+            </div>
+            
+            <!-- Streaming Metrics -->
+            <div class="card">
+                <h2>📈 Streaming Metrics</h2>
+                <div class="status-row">
+                    <span class="status-label">Bytes Streamed</span>
+                    <span id="bytes-streamed" class="status-value">0 MB</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Current Speed</span>
+                    <span id="stream-speed" class="status-value">0.0 MB/s</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Buffer Usage</span>
+                    <span id="buffer-usage" class="status-value">0%</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Active Streams</span>
+                    <span id="active-streams" class="status-value">0</span>
+                </div>
+                <div class="progress-bar">
+                    <div id="buffer-progress" class="progress-fill" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <!-- System Logs -->
+            <div class="card" style="grid-column: 1 / -1;">
+                <h2>📝 System Logs</h2>
+                <div class="log-container" id="log-container">
+                    <div class="log-entry info">[System] Control panel initialized</div>
+                </div>
+                <div class="button-group">
+                    <button class="secondary" onclick="clearLogs()">Clear</button>
+                    <button class="secondary" onclick="exportLogs()">Export</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Configuration
+        const API_BASE = 'http://localhost:8080/api';
+        let meterInterval = null;
+        let statusInterval = null;
+        let audioLevelInterval = null;
+        let logsInterval = null;
+        let conversionInterval = null;
+        let currentFileInfo = null;
+        let isPlaying = false;
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initVUMeters(6);
+            initSpeakerCanvas();
+            loadConfig();
+            refreshStatus();
+            startAutoRefresh();
+            fetchLogs();
+            logsInterval = setInterval(fetchLogs, 2000);
+            startMetrics();
+            log('Control panel ready', 'info');
+        });
+        
+        // Utility functions
+        function showError(message) {
+            const el = document.getElementById('error-display');
+            el.textContent = message;
+            el.classList.add('visible');
+            setTimeout(() => el.classList.remove('visible'), 10000);
+        }
+        
+        function clearError() {
+            document.getElementById('error-display').classList.remove('visible');
+        }
+        
+        // Quick Play - Start pipeline and play file
+        async function quickPlay() {
+            const file = document.getElementById('quick-play-file').value;
+            if (!file) {
+                log('Please enter a file path', 'error');
+                showError('Please enter a file path');
+                return;
+            }
+            
+            clearError();
+            log(`Quick play: ${file}`, 'info');
+            
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = '⏳ Starting...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/start`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        file: file,
+                        channels: parseInt(document.getElementById('output-channels').value),
+                        sample_rate: parseInt(document.getElementById('sample-rate').value),
+                        bit_depth: parseInt(document.getElementById('bit-depth').value)
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (data.playback && data.playback.success) {
+                        log('Pipeline started and playback begun!', 'info');
+                        isPlaying = true;
+                        updatePlayButton();
+                    } else if (data.playback_error) {
+                        log(`Pipeline started but playback failed: ${data.playback_error}`, 'warn');
+                        showError(`Playback failed: ${data.playback_error}`);
+                    } else {
+                        log('Pipeline started (no auto-playback)', 'info');
+                    }
+                    refreshStatus();
+                } else {
+                    log(`Failed: ${data.error}`, 'error');
+                    showError(data.error || 'Failed to start');
+                }
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+                showError(error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '▶ Start & Play';
+            }
+        }
+        
+        // Tab switching
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(`tab-${tab}`).classList.add('active');
+        }
+        
+        function updateStreamOptions() {
+            const source = document.getElementById('stream-source').value;
+            document.getElementById('url-input').style.display = source === 'url' ? 'block' : 'none';
+        }
+        
+        // File Analysis
+        async function analyzeFile() {
+            // Try quick play field first, then file tab field
+            let file = document.getElementById('quick-play-file').value;
+            if (!file) {
+                file = document.getElementById('media-file').value;
+            }
+            
+            if (!file) {
+                log('No file selected', 'error');
+                showError('Please enter a file path');
+                return;
+            }
+            
+            // Update both fields
+            document.getElementById('quick-play-file').value = file;
+            document.getElementById('media-file').value = file;
+            
+            log(`Analyzing: ${file}...`, 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE}/analyze`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({file: file})
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentFileInfo = data;
+                    
+                    // Show analysis in both places
+                    document.getElementById('file-analysis').style.display = 'block';
+                    document.getElementById('quick-analysis').style.display = 'block';
+                    
+                    // Update codec badges
+                    const codecBadge = document.getElementById('detected-codec');
+                    const quickCodec = document.getElementById('quick-codec');
+                    
+                    codecBadge.textContent = data.codec;
+                    codecBadge.className = `codec-badge codec-${data.codec}`;
+                    quickCodec.textContent = data.codec;
+                    quickCodec.className = `codec-badge codec-${data.codec}`;
+                    
+                    // Show warnings/info
+                    const needsConvert = data.codec === 'truehd' && !data.cached_damf;
+                    const hasCache = !!data.cached_damf;
+                    
+                    document.getElementById('conversion-warning').style.display = needsConvert ? 'block' : 'none';
+                    document.getElementById('btn-convert').style.display = needsConvert ? 'inline-block' : 'none';
+                    document.getElementById('cache-info').style.display = hasCache ? 'block' : 'none';
+                    document.getElementById('quick-cache-info').style.display = hasCache ? 'block' : 'none';
+                    document.getElementById('quick-convert-warning').style.display = needsConvert ? 'block' : 'none';
+                    
+                    log(`Detected: ${data.codec} (${data.channels}ch @ ${data.sample_rate}Hz)` + 
+                        (hasCache ? ' [CACHED]' : ''), 'info');
+                } else {
+                    log(`Analysis failed: ${data.error}`, 'error');
+                    showError(data.error);
+                }
+            } catch (error) {
+                log(`Error analyzing file: ${error.message}`, 'error');
+                showError(error.message);
+            }
+        }
+        
+        // File Conversion
+        async function convertFile() {
+            const file = document.getElementById('media-file').value;
+            if (!file) return;
+            
+            log('Starting TrueHD conversion...', 'info');
+            
+            document.getElementById('conversion-status').classList.remove('hidden');
+            document.getElementById('btn-convert').disabled = true;
+            
+            try {
+                const response = await fetch(`${API_BASE}/convert`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({file: file})
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    startConversionPolling();
+                } else {
+                    log(`Conversion failed: ${data.error}`, 'error');
+                    showError(data.error);
+                    document.getElementById('conversion-status').classList.add('hidden');
+                    document.getElementById('btn-convert').disabled = false;
+                }
+            } catch (error) {
+                log(`Conversion error: ${error.message}`, 'error');
+                showError(error.message);
+                document.getElementById('conversion-status').classList.add('hidden');
+                document.getElementById('btn-convert').disabled = false;
+            }
+        }
+        
+        function startConversionPolling() {
+            if (conversionInterval) clearInterval(conversionInterval);
+            
+            conversionInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`${API_BASE}/convert/status`);
+                    const status = await response.json();
+                    
+                    document.getElementById('conversion-progress').style.width = `${status.progress}%`;
+                    document.getElementById('conversion-stage').textContent = status.stage;
+                    document.getElementById('conversion-message').textContent = status.message;
+                    
+                    if (status.active) {
+                        document.getElementById('status-dot').className = 'status-indicator status-converting';
+                    }
+                    
+                    if (status.stage === 'complete') {
+                        clearInterval(conversionInterval);
+                        document.getElementById('btn-convert').style.display = 'none';
+                        document.getElementById('conversion-warning').style.display = 'none';
+                        document.getElementById('cache-info').style.display = 'block';
+                        document.getElementById('quick-convert-warning').style.display = 'none';
+                        document.getElementById('quick-cache-info').style.display = 'block';
+                        log('Conversion complete!', 'info');
+                        
+                        setTimeout(() => {
+                            document.getElementById('conversion-status').classList.add('hidden');
+                        }, 3000);
+                    } else if (status.stage === 'error') {
+                        clearInterval(conversionInterval);
+                        document.getElementById('btn-convert').disabled = false;
+                        log(`Conversion error: ${status.error}`, 'error');
+                        showError(status.error);
+                    }
+                } catch (error) {
+                    console.error('Polling error:', error);
+                }
+            }, 500);
+        }
+        
+        // Playback
+        async function playFile() {
+            const file = document.getElementById('media-file').value;
+            if (!file) {
+                log('No file selected', 'error');
+                showError('Please enter a file path');
+                return;
+            }
+            
+            // Auto-analyze if not done
+            if (!currentFileInfo || currentFileInfo.file !== file) {
+                await analyzeFile();
+            }
+            
+            // For TrueHD, check if converted or cached
+            if (currentFileInfo && currentFileInfo.codec === 'truehd' && !currentFileInfo.cached_damf) {
+                log('TrueHD file needs conversion first', 'warn');
+                showError('Please convert the TrueHD file first');
+                return;
+            }
+            
+            clearError();
+            log(`Playing: ${file}`, 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE}/play`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        file: file,
+                        channels: parseInt(document.getElementById('output-channels').value),
+                        sample_rate: parseInt(document.getElementById('sample-rate').value),
+                        bit_depth: parseInt(document.getElementById('bit-depth').value)
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    log(`Playback started: ${data.codec}${data.converted ? ' (converted)' : ''}`, 'info');
+                    isPlaying = true;
+                    updatePlayButton();
+                } else {
+                    log(`Playback failed: ${data.error}`, 'error');
+                    showError(data.error);
+                }
+            } catch (error) {
+                log(`Error starting playback: ${error.message}`, 'error');
+                showError(error.message);
+            }
+        }
+        
+        // Streaming
+        async function startStreaming() {
+            const source = document.getElementById('stream-source').value;
+            const url = document.getElementById('stream-url').value;
+            
+            if (source === 'url' && !url) {
+                log('Please enter a stream URL', 'error');
+                showError('Please enter a stream URL');
+                return;
+            }
+            
+            clearError();
+            log(`Starting stream from: ${source}`, 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE}/stream/start`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        source: source,
+                        url: url,
+                        channels: parseInt(document.getElementById('output-channels').value),
+                        sample_rate: parseInt(document.getElementById('sample-rate').value),
+                        bit_depth: parseInt(document.getElementById('bit-depth').value)
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    log(`Streaming started from ${data.source}`, 'info');
+                    document.getElementById('current-file').textContent = `[Stream: ${source}]`;
+                    isPlaying = true;
+                    updatePlayButton();
+                } else {
+                    log(`Streaming failed: ${data.error}`, 'error');
+                    showError(data.error);
+                }
+            } catch (error) {
+                log(`Streaming error: ${error.message}`, 'error');
+                showError(error.message);
+            }
+        }
+        
+        async function stopPlayback() {
+            try {
+                const response = await fetch(`${API_BASE}/play/stop`, {method: 'POST'});
+                const data = await response.json();
+                if (data.success) {
+                    log('Playback stopped', 'info');
+                    isPlaying = false;
+                    updatePlayButton();
+                }
+            } catch (error) {
+                log(`Error stopping playback: ${error.message}`, 'error');
+            }
+        }
+        
+        function updatePlayButton() {
+            // Could update UI based on play state
+        }
+        
+        // Rest of functions...
+        async function fetchLogs() {
+            try {
+                const response = await fetch(`${API_BASE}/logs?lines=50`);
+                const logs = await response.json();
+                
+                const container = document.getElementById('log-container');
+                container.innerHTML = '';
+                
+                for (const entry of logs) {
+                    const time = new Date(entry.time).toLocaleTimeString();
+                    const div = document.createElement('div');
+                    div.className = `log-entry ${entry.level}`;
+                    div.textContent = `[${time}] ${entry.message}`;
+                    container.appendChild(div);
+                }
+                container.scrollTop = container.scrollHeight;
+            } catch (error) {}
+        }
+        
+        // VU Meter initialization
+        function initVUMeters(channels) {
+            const container = document.getElementById('vu-meters');
+            container.innerHTML = '';
+            
+            const labels = getChannelLabels(channels);
+            
+            for (let i = 0; i < channels; i++) {
+                const channel = document.createElement('div');
+                channel.className = 'vu-channel';
+                channel.innerHTML = `
+                    <div class="vu-bar-container">
+                        <div class="vu-bar" id="vu-bar-${i}" style="height: 0%"></div>
+                    </div>
+                    <div class="vu-label">${labels[i] || `Ch${i+1}`}</div>
+                `;
+                container.appendChild(channel);
+            }
+        }
+        
+        function getChannelLabels(channels) {
+            const layouts = {
+                2: ['L', 'R'],
+                4: ['FL', 'FR', 'RL', 'RR'],
+                6: ['FL', 'FR', 'C', 'LFE', 'SL', 'SR'],
+                8: ['FL', 'FR', 'C', 'LFE', 'SL', 'SR', 'BL', 'BR'],
+                10: ['FL', 'FR', 'C', 'LFE', 'SL', 'SR', 'BL', 'BR', 'TFL', 'TFR'],
+                12: ['FL', 'FR', 'C', 'LFE', 'SL', 'SR', 'BL', 'BR', 'TFL', 'TFR', 'TBL', 'TBR']
+            };
+            return layouts[channels] || Array(channels).fill('').map((_, i) => `Ch${i+1}`);
+        }
+        
+        // Speaker Canvas
+        function initSpeakerCanvas() {
+            const canvas = document.getElementById('speaker-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+            drawSpeakerLayout(ctx, canvas.width, canvas.height, 6);
+        }
+        
+        function drawSpeakerLayout(ctx, width, height, channels) {
+            ctx.fillStyle = '#0a0a1a';
+            ctx.fillRect(0, 0, width, height);
+            
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const scale = Math.min(width, height) * 0.35;
+            
+            ctx.strokeStyle = '#2a2a4a';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(centerX - scale, centerY - scale, scale * 2, scale * 2);
+            
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 8, 0, Math.PI * 2);
+            ctx.fillStyle = '#667eea';
+            ctx.fill();
+            ctx.fillStyle = '#fff';
+            ctx.font = '10px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Listener', centerX, centerY + 20);
+            
+            const speakers51 = [
+                {x: -0.866, z: 0.5, name: 'FL'},
+                {x: 0.866, z: 0.5, name: 'FR'},
+                {x: 0, z: 1, name: 'C'},
+                {x: 0, z: 0, name: 'LFE'},
+                {x: -0.866, z: -0.5, name: 'SL'},
+                {x: 0.866, z: -0.5, name: 'SR'}
+            ];
+            
+            const speakers = speakers51.slice(0, channels);
+            
+            speakers.forEach((spk, i) => {
+                const x = centerX + spk.x * scale;
+                const y = centerY - spk.z * scale;
+                
+                ctx.beginPath();
+                ctx.arc(x, y, 12, 0, Math.PI * 2);
+                ctx.fillStyle = '#4ade80';
+                ctx.fill();
+                
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 11px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(spk.name, x, y);
+                
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.lineTo(x, y);
+                ctx.strokeStyle = '#3a3a5a';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            });
+            
+            ctx.fillStyle = '#888';
+            ctx.font = '12px sans-serif';
+            ctx.fillText('FRONT', centerX, centerY - scale - 15);
+            ctx.fillText('BACK', centerX, centerY + scale + 25);
+        }
+        
+        // Status management
+        async function refreshStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/status`);
+                const data = await response.json();
+                
+                updateStatusUI('cavern', data.pipeline.cavern);
+                updateStatusUI('snap', data.pipeline.snapserver);
+                
+                // FIFO status
+                const fifoStatus = document.getElementById('fifo-status');
+                if (data.fifo_exists) {
+                    fifoStatus.textContent = data.fifo_flowing ? '✓ Active' : '✓ Ready';
+                    fifoStatus.className = 'status-value ' + (data.fifo_flowing ? 'success' : '');
+                } else {
+                    fifoStatus.textContent = '✗ Missing';
+                    fifoStatus.className = 'status-value error';
+                }
+                
+                // Main status dot
+                const dot = document.getElementById('status-dot');
+                if (data.playback && data.playback.status === 'playing') {
+                    dot.className = 'status-indicator status-playing';
+                } else if (data.pipeline.cavern && data.pipeline.snapserver) {
+                    dot.className = 'status-indicator status-running';
+                } else if (!data.pipeline.cavern && !data.pipeline.snapserver) {
+                    dot.className = 'status-indicator status-stopped';
+                } else {
+                    dot.className = 'status-indicator status-unknown';
+                }
+                
+                document.getElementById('client-count').textContent = data.clients;
+                
+                if (data.playback) {
+                    if (data.playback.file) {
+                        const fileName = data.playback.file.split('/').pop() || data.playback.file;
+                        document.getElementById('current-file').textContent = fileName;
+                    }
+                    if (data.playback.status) {
+                        const status = data.playback.status;
+                        document.getElementById('playback-status').textContent = 
+                            status.charAt(0).toUpperCase() + status.slice(1);
+                    }
+                }
+                
+            } catch (error) {
+                const dot = document.getElementById('status-dot');
+                dot.className = 'status-indicator status-unknown';
+                document.getElementById('cavern-status').textContent = '✗ Error';
+                document.getElementById('cavern-status').style.color = '#ef4444';
+                document.getElementById('snap-status').textContent = '✗ Error';
+                document.getElementById('snap-status').style.color = '#ef4444';
+            }
+        }
+        
+        function updateStatusUI(component, running) {
+            const el = document.getElementById(`${component}-status`);
+            if (running) {
+                el.textContent = '✓ Running';
+                el.style.color = '#4ade80';
+            } else {
+                el.textContent = '✗ Stopped';
+                el.style.color = '#ef4444';
+            }
+        }
+        
+        function startAutoRefresh() {
+            statusInterval = setInterval(refreshStatus, 3000);
+        }
+        
+        // Controls
+        async function startPipeline() {
+            clearError();
+            log('Starting pipeline...', 'info');
+            
+            const btn = document.getElementById('btn-start');
+            btn.disabled = true;
+            
+            try {
+                const response = await fetch(`${API_BASE}/start`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    log('Pipeline started successfully', 'info');
+                } else {
+                    log('Failed to start: ' + data.error, 'error');
+                    showError(data.error);
+                }
+                refreshStatus();
+            } catch (error) {
+                log('Error starting pipeline: ' + error.message, 'error');
+                showError(error.message);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+        
+        async function stopPipeline() {
+            log('Stopping pipeline...', 'warn');
+            
+            try {
+                const response = await fetch(`${API_BASE}/stop`, {method: 'POST'});
+                const data = await response.json();
+                if (data.success) {
+                    log('Pipeline stopped', 'info');
+                    isPlaying = false;
+                } else {
+                    log('Error stopping: ' + data.error, 'error');
+                }
+                refreshStatus();
+            } catch (error) {
+                log('Error stopping pipeline: ' + error.message, 'error');
+            }
+        }
+        
+        async function applyConfig() {
+            const layout = document.getElementById('speaker-layout').value;
+            const rate = document.getElementById('sample-rate').value;
+            const depth = document.getElementById('bit-depth').value;
+            const channels = document.getElementById('output-channels').value;
+            
+            log(`Configuration: ${layout}, ${rate}Hz, ${depth}-bit, ${channels}ch`, 'info');
+            initVUMeters(parseInt(channels));
+            
+            const canvas = document.getElementById('speaker-canvas');
+            const ctx = canvas.getContext('2d');
+            drawSpeakerLayout(ctx, canvas.width, canvas.height, parseInt(channels));
+            
+            try {
+                await fetch(`${API_BASE}/config`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        layout: layout,
+                        sample_rate: parseInt(rate),
+                        bit_depth: parseInt(depth),
+                        channels: parseInt(channels)
+                    })
+                });
+            } catch (error) {
+                log('Failed to save config: ' + error.message, 'error');
+            }
+        }
+        
+        async function loadConfig() {
+            try {
+                const response = await fetch(`${API_BASE}/config`);
+                const config = await response.json();
+                
+                if (config.streaming) {
+                    document.getElementById('buffer-size').value = config.streaming.buffer_ms || 1000;
+                    document.getElementById('latency').value = config.streaming.latency_ms || 100;
+                }
+            } catch (error) {
+                // Ignore
+            }
+        }
+        
+        function updateLayout() {
+            const layout = document.getElementById('speaker-layout').value;
+            const channels = {
+                'stereo': 2, 'quad': 4, 'surround_51': 6, 'surround_71': 8,
+                'surround_712': 10, 'surround_714': 12
+            }[layout] || 6;
+            
+            document.getElementById('output-channels').value = channels;
+            applyConfig();
+        }
+        
+        function visualizeLayout() {
+            const canvas = document.getElementById('speaker-canvas');
+            const ctx = canvas.getContext('2d');
+            const channels = parseInt(document.getElementById('output-channels').value);
+            drawSpeakerLayout(ctx, canvas.width, canvas.height, channels);
+            log('Speaker layout visualization updated', 'info');
+        }
+        
+        // Meters
+        async function fetchAudioLevels() {
+            try {
+                const channels = parseInt(document.getElementById('output-channels').value);
+                const response = await fetch(`${API_BASE}/audio-levels?channels=${channels}`);
+                const data = await response.json();
+                
+                for (const ch of data.channels) {
+                    const bar = document.getElementById(`vu-bar-${ch.channel}`);
+                    if (bar) {
+                        bar.style.height = `${ch.level}%`;
+                    }
+                }
+            } catch (error) {}
+        }
+        
+        function startMeters() {
+            if (audioLevelInterval) return;
+            
+            log('Starting VU meters...', 'info');
+            audioLevelInterval = setInterval(fetchAudioLevels, 100);
+        }
+        
+        function stopMeters() {
+            if (audioLevelInterval) {
+                clearInterval(audioLevelInterval);
+                audioLevelInterval = null;
+                log('VU meters stopped', 'info');
+            }
+        }
+        
+        function fileSelected(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const path = file.path || file.name;
+                document.getElementById('media-file').value = path;
+                document.getElementById('quick-play-file').value = path;
+                log(`Selected: ${file.name}`, 'info');
+                setTimeout(analyzeFile, 100);
+            }
+        }
+        
+        // Streaming metrics
+        let metricsInterval = null;
+        
+        async function fetchMetrics() {
+            try {
+                const response = await fetch(`${API_BASE}/metrics`);
+                const data = await response.json();
+                
+                document.getElementById('bytes-streamed').textContent = 
+                    (data.bytes_streamed / 1024 / 1024).toFixed(2) + ' MB';
+                document.getElementById('stream-speed').textContent = 
+                    (data.speed_mbps).toFixed(2) + ' MB/s';
+                document.getElementById('buffer-usage').textContent = 
+                    data.buffer_percent + '%';
+                document.getElementById('active-streams').textContent = 
+                    data.active_streams;
+                
+                document.getElementById('buffer-progress').style.width = 
+                    data.buffer_percent + '%';
+                
+            } catch (error) {}
+        }
+        
+        function startMetrics() {
+            if (metricsInterval) return;
+            metricsInterval = setInterval(fetchMetrics, 1000);
+        }
+        
+        function stopMetrics() {
+            if (metricsInterval) {
+                clearInterval(metricsInterval);
+                metricsInterval = null;
+            }
+        }
+        
+        // Logging
+        function log(message, level = 'info') {
+            const container = document.getElementById('log-container');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${level}`;
+            const time = new Date().toLocaleTimeString();
+            entry.textContent = `[${time}] ${message}`;
+            container.appendChild(entry);
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        function clearLogs() {
+            document.getElementById('log-container').innerHTML = '';
+        }
+        
+        function exportLogs() {
+            const logs = document.getElementById('log-container').innerText;
+            const blob = new Blob([logs], {type: 'text/plain'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `cavernpipe-logs-${Date.now()}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+            log('Logs exported', 'info');
+        }
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            const canvas = document.getElementById('speaker-canvas');
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+            const ctx = canvas.getContext('2d');
+            const channels = parseInt(document.getElementById('output-channels').value);
+            drawSpeakerLayout(ctx, canvas.width, canvas.height, channels);
+        });
+    </script>
+</body>
+</html>

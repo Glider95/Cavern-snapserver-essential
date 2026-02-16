@@ -83,7 +83,7 @@ if [ "$FILE_EXT" = "atmos" ]; then
   
   # File-based mode: CavernPipeClient reads file directly, outputs PCM
   # Use stdbuf -o0 to disable output buffering - critical for pipe transfer
-  stdbuf -o0 dotnet "$CLIENT_DLL" "$FILE" "$OUTPUT_CHANNELS" "$BIT_DEPTH" \
+  stdbuf -o0 dotnet "$CLIENT_DLL" -f "$FILE" "$OUTPUT_CHANNELS" "$BIT_DEPTH" \
     2>"$LOG_DIR/client.log" \
   | dotnet "$PIPETOFIFO_DLL" "$FIFO" \
     2>"$LOG_DIR/fifo.log"
@@ -123,7 +123,7 @@ if [ "$CODEC" = "truehd" ]; then
     echo "[play] Using file-based mode for TrueHD"
     
     # Use file-based mode with the cached DAMF
-    stdbuf -o0 dotnet "$CLIENT_DLL" "$CACHED_DAMF" "$OUTPUT_CHANNELS" "$BIT_DEPTH" \
+    stdbuf -o0 dotnet "$CLIENT_DLL" -f "$CACHED_DAMF" "$OUTPUT_CHANNELS" "$BIT_DEPTH" \
       2>"$LOG_DIR/client.log" \
     | dotnet "$PIPETOFIFO_DLL" "$FIFO" \
       2>"$LOG_DIR/fifo.log"

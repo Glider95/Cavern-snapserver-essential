@@ -25,27 +25,139 @@ class Program
 
     static async Task Main(string[] args)
     {
-        // Check if first argument is a file path (file-based mode)
-        if (args.Length >= 1 && File.Exists(args[0]))
+        // Parse arguments to determine mode
+        // File-based mode: -f <file_path> [channels] [bitDepth]
+        // Streaming mode: [channels] [sampleRate] [bitDepth]
+        var parsedArgs = ParseArguments(args);
+        
+        if (parsedArgs.FilePath != null)
         {
-            await RunFileBasedMode(args);
+            await RunFileBasedMode(parsedArgs);
         }
         else
         {
-            await RunStreamingMode(args);
+            await RunStreamingMode(parsedArgs);
         }
+    }
+
+    class ParsedArguments
+    {
+        public string? FilePath { get; set; }
+        public int Channels { get; set; } = DefaultChannels;
+        public int SampleRate { get; set; } = 48000;
+        public byte BitDepth { get; set; } = DefaultBitDepth;
+    }
+
+    static ParsedArguments ParseArguments(string[] args)
+    {
+        var result = new ParsedArguments();
+        int i = 0;
+        int positionalIndex = 0;  // Track position within remaining arguments
+        
+        while (i < args.Length)
+        {
+            switch (args[i])
+            {
+                case "-f":
+                case "--file":
+                    if (i + 1 < args.Length)
+                    {
+                        result.FilePath = args[i + 1];
+                        i += 2;
+                        positionalIndex = 0;  // Reset for args after -f
+                    }
+                    else
+                    {
+                        i++;
+                    }
+                    break;
+                case "-c":
+                case "--channels":
+                    if (i + 1 < args.Length && int.TryParse(args[i + 1], out int ch))
+                    {
+                        result.Channels = ch;
+                        i += 2;
+                    }
+                    else
+                    {
+                        i++;
+                    }
+                    break;
+                case "-r":
+                case "--rate":
+                    if (i + 1 < args.Length && int.TryParse(args[i + 1], out int sr))
+                    {
+                        result.SampleRate = sr;
+                        i += 2;
+                    }
+                    else
+                    {
+                        i++;
+                    }
+                    break;
+                case "-b":
+                case "--bits":
+                    if (i + 1 < args.Length && byte.TryParse(args[i + 1], out byte bd))
+                    {
+                        result.BitDepth = bd;
+                        i += 2;
+                    }
+                    else
+                    {
+                        i++;
+                    }
+                    break;
+                default:
+                    // Positional arguments
+                    if (result.FilePath == null && File.Exists(args[i]))
+                    {
+                        result.FilePath = args[i];
+                        // Don't increment positionalIndex - next arg is still first positional
+                    }
+                    else if (positionalIndex == 0)
+                    {
+                        // First positional: channels
+                        if (int.TryParse(args[i], out int posCh))
+                            result.Channels = posCh;
+                        positionalIndex++;
+                    }
+                    else if (positionalIndex == 1)
+                    {
+                        // Second positional: bitDepth (file mode) or sampleRate (streaming)
+                        if (int.TryParse(args[i], out int posVal))
+                        {
+                            if (result.FilePath != null)
+                                result.BitDepth = (byte)posVal;
+                            else
+                                result.SampleRate = posVal;
+                        }
+                        positionalIndex++;
+                    }
+                    else if (positionalIndex == 2 && result.FilePath == null)
+                    {
+                        // Third positional: bitDepth (streaming mode only)
+                        if (byte.TryParse(args[i], out byte posBd))
+                            result.BitDepth = posBd;
+                        positionalIndex++;
+                    }
+                    i++;
+                    break;
+            }
+        }
+        
+        return result;
     }
 
     /// <summary>
     /// File-based mode: Send file path to server for direct file opening.
     /// This avoids all streaming issues with container formats.
-    /// Args: <file_path> [channels] [bitDepth]
+    /// Args: -f <file_path> [channels] [bitDepth]
     /// </summary>
-    static async Task RunFileBasedMode(string[] args)
+    static async Task RunFileBasedMode(ParsedArguments args)
     {
-        string audioFile = args[0];
-        int outputChannels = args.Length > 1 && int.TryParse(args[1], out int ch) ? ch : DefaultChannels;
-        byte bitDepth = args.Length > 2 && byte.TryParse(args[2], out byte bd) ? bd : DefaultBitDepth;
+        string audioFile = args.FilePath!;
+        int outputChannels = args.Channels;
+        byte bitDepth = args.BitDepth;
 
         Console.Error.WriteLine($"[CavernPipeClient] File-based mode");
         Console.Error.WriteLine($"[CavernPipeClient] File: {audioFile}");
@@ -59,12 +171,18 @@ class Program
         Console.Error.WriteLine($"[CavernPipeClient] Handshake sent (file mode)");
 
         // Send file path (length-prefixed)
-        byte[] pathBytes = System.Text.Encoding.UTF8.GetBytes(Path.GetFullPath(audioFile));
+        string fullPath = Path.GetFullPath(audioFile);
+        if (!File.Exists(fullPath))
+        {
+            Console.Error.WriteLine($"[CavernPipeClient] ERROR: File not found: {fullPath}");
+            Environment.Exit(1);
+        }
+        byte[] pathBytes = System.Text.Encoding.UTF8.GetBytes(fullPath);
         byte[] pathLength = BitConverter.GetBytes(pathBytes.Length);
         await stream.WriteAsync(pathLength, 0, 4);
         await stream.WriteAsync(pathBytes, 0, pathBytes.Length);
         await stream.FlushAsync();
-        Console.Error.WriteLine($"[CavernPipeClient] Sent file path ({pathBytes.Length} bytes)");
+        Console.Error.WriteLine($"[CavernPipeClient] Sent file path ({pathBytes.Length} bytes): {fullPath}");
 
         // Receive PCM output and write to stdout
         await ReceivePcmOutput(stream);
@@ -72,22 +190,14 @@ class Program
 
     /// <summary>
     /// Streaming mode: Read audio from stdin and stream to server.
-    /// Args: [channels] [bitDepth]
+    /// Args: [channels] [sampleRate] [bitDepth]
     /// </summary>
-    static async Task RunStreamingMode(string[] args)
+    static async Task RunStreamingMode(ParsedArguments args)
     {
-        int outputChannels = DefaultChannels;
-        byte bitDepth = DefaultBitDepth;
-
-        // Parse optional arguments
-        if (args.Length >= 1 && int.TryParse(args[0], out int ch) && ch > 0)
-        {
-            outputChannels = ch;
-        }
-        if (args.Length >= 2 && byte.TryParse(args[1], out byte bd) && (bd == 16 || bd == 24 || bd == 32))
-        {
-            bitDepth = bd;
-        }
+        int outputChannels = args.Channels;
+        byte bitDepth = args.BitDepth;
+        // SampleRate is for logging only in streaming mode
+        Console.Error.WriteLine($"[CavernPipeClient] Sample rate: {args.SampleRate}Hz");
 
         Console.Error.WriteLine($"[CavernPipeClient] Streaming mode");
         Console.Error.WriteLine($"[CavernPipeClient] Output: {outputChannels}ch, {bitDepth}-bit, UpdateRate={DefaultUpdateRate}");
@@ -106,6 +216,7 @@ class Program
     static byte[] CreateHandshake(byte bitDepth, int channels, int updateRate)
     {
         byte[] handshake = new byte[8];
+        // Cavern BitDepth enum uses raw bit depth values: Int8=8, Int16=16, Int24=24, Float32=32
         handshake[0] = bitDepth;
         handshake[1] = DefaultMandatoryFrames;
         BitConverter.GetBytes((ushort)channels).CopyTo(handshake, 2);

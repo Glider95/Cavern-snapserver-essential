@@ -68,6 +68,18 @@ if ! ps -p $CAVERN_PID > /dev/null; then
   exit 1
 fi
 
+# Reset snapserver config to match current environment
+SAMPLEFORMAT="${SAMPLE_RATE}:${BIT_DEPTH}:${OUTPUT_CHANNELS}"
+echo "[run] Setting snapserver format: $SAMPLEFORMAT"
+sed -i.bak "s/sampleformat=[0-9]\+:[0-9]\+:[0-9]\+/sampleformat=$SAMPLEFORMAT/" "$ROOT_DIR/config/snapserver.conf" 2>/dev/null || \
+  sed -i '' "s/sampleformat=[0-9]\+:[0-9]\+:[0-9]\+/sampleformat=$SAMPLEFORMAT/" "$ROOT_DIR/config/snapserver.conf"
+
+# Ensure Opus codec is set (standard for this project)
+CODEC="opus"
+echo "[run] Using Opus codec (standardized for WiFi streaming)"
+sed -i.bak "s/^codec = .*/codec = $CODEC/" "$ROOT_DIR/config/snapserver.conf" 2>/dev/null || \
+  sed -i '' "s/^codec = .*/codec = $CODEC/" "$ROOT_DIR/config/snapserver.conf"
+
 # Start Snapserver
 echo "[run] Starting Snapserver..."
 snapserver -c "$ROOT_DIR/config/snapserver.conf" > "$LOG_DIR/snapserver.log" 2>&1 &

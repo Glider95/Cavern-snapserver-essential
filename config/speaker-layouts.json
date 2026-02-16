@@ -1,0 +1,189 @@
+{
+  "layouts": {
+    "stereo": {
+      "name": "Stereo (2.0)",
+      "channels": 2,
+      "description": "Left, Right",
+      "speaker_positions": [
+        {"x": -1.0, "y": 0.0, "z": 0.0, "name": "Left"},
+        {"x": 1.0, "y": 0.0, "z": 0.0, "name": "Right"}
+      ],
+      "default": false
+    },
+    "quad": {
+      "name": "Quadraphonic (4.0)",
+      "channels": 4,
+      "description": "Front Left, Front Right, Rear Left, Rear Right",
+      "speaker_positions": [
+        {"x": -1.0, "y": 0.0, "z": 1.0, "name": "Front Left"},
+        {"x": 1.0, "y": 0.0, "z": 1.0, "name": "Front Right"},
+        {"x": -1.0, "y": 0.0, "z": -1.0, "name": "Rear Left"},
+        {"x": 1.0, "y": 0.0, "z": -1.0, "name": "Rear Right"}
+      ],
+      "default": false
+    },
+    "surround_51": {
+      "name": "5.1 Surround",
+      "channels": 6,
+      "description": "FL, FR, C, LFE, SL, SR",
+      "speaker_positions": [
+        {"x": -0.866, "y": 0.0, "z": 0.5, "name": "Front Left"},
+        {"x": 0.866, "y": 0.0, "z": 0.5, "name": "Front Right"},
+        {"x": 0.0, "y": 0.0, "z": 1.0, "name": "Center"},
+        {"x": 0.0, "y": -0.5, "z": 0.0, "name": "LFE"},
+        {"x": -0.866, "y": 0.0, "z": -0.5, "name": "Surround Left"},
+        {"x": 0.866, "y": 0.0, "z": -0.5, "name": "Surround Right"}
+      ],
+      "default": true
+    },
+    "surround_51_side": {
+      "name": "5.1 Surround (Side)",
+      "channels": 6,
+      "description": "FL, FR, C, LFE, SL, SR (side-mounted surrounds)",
+      "speaker_positions": [
+        {"x": -0.866, "y": 0.0, "z": 0.5, "name": "Front Left"},
+        {"x": 0.866, "y": 0.0, "z": 0.5, "name": "Front Right"},
+        {"x": 0.0, "y": 0.0, "z": 1.0, "name": "Center"},
+        {"x": 0.0, "y": -0.5, "z": 0.0, "name": "LFE"},
+        {"x": -1.0, "y": 0.0, "z": 0.0, "name": "Side Left"},
+        {"x": 1.0, "y": 0.0, "z": 0.0, "name": "Side Right"}
+      ],
+      "default": false
+    },
+    "surround_61": {
+      "name": "6.1 Surround",
+      "channels": 7,
+      "description": "FL, FR, C, LFE, SL, SR, BC",
+      "speaker_positions": [
+        {"x": -0.866, "y": 0.0, "z": 0.5, "name": "Front Left"},
+        {"x": 0.866, "y": 0.0, "z": 0.5, "name": "Front Right"},
+        {"x": 0.0, "y": 0.0, "z": 1.0, "name": "Center"},
+        {"x": 0.0, "y": -0.5, "z": 0.0, "name": "LFE"},
+        {"x": -0.866, "y": 0.0, "z": -0.5, "name": "Surround Left"},
+        {"x": 0.866, "y": 0.0, "z": -0.5, "name": "Surround Right"},
+        {"x": 0.0, "y": 0.0, "z": -1.0, "name": "Back Center"}
+      ],
+      "default": false
+    },
+    "surround_71": {
+      "name": "7.1 Surround",
+      "channels": 8,
+      "description": "FL, FR, C, LFE, SL, SR, BL, BR",
+      "speaker_positions": [
+        {"x": -0.866, "y": 0.0, "z": 0.5, "name": "Front Left"},
+        {"x": 0.866, "y": 0.0, "z": 0.5, "name": "Front Right"},
+        {"x": 0.0, "y": 0.0, "z": 1.0, "name": "Center"},
+        {"x": 0.0, "y": -0.5, "z": 0.0, "name": "LFE"},
+        {"x": -0.866, "y": 0.0, "z": 0.0, "name": "Side Left"},
+        {"x": 0.866, "y": 0.0, "z": 0.0, "name": "Side Right"},
+        {"x": -0.866, "y": 0.0, "z": -0.5, "name": "Back Left"},
+        {"x": 0.866, "y": 0.0, "z": -0.5, "name": "Back Right"}
+      ],
+      "default": false
+    },
+    "surround_71_sd": {
+      "name": "7.1 Surround (SDDS)",
+      "channels": 8,
+      "description": "FL, FR, FC, LFE, SL, SR, BL, BR (SDDS variant)",
+      "speaker_positions": [
+        {"x": -0.866, "y": 0.0, "z": 0.5, "name": "Front Left"},
+        {"x": 0.866, "y": 0.0, "z": 0.5, "name": "Front Right"},
+        {"x": -0.5, "y": 0.0, "z": 0.866, "name": "Front Center Left"},
+        {"x": 0.5, "y": 0.0, "z": 0.866, "name": "Front Center Right"},
+        {"x": 0.0, "y": -0.5, "z": 0.0, "name": "LFE"},
+        {"x": -0.866, "y": 0.0, "z": -0.5, "name": "Surround Left"},
+        {"x": 0.866, "y": 0.0, "z": -0.5, "name": "Surround Right"},
+        {"x": 0.0, "y": 0.0, "z": -1.0, "name": "Back Center"}
+      ],
+      "default": false
+    },
+    "surround_712": {
+      "name": "7.1.2 Atmos",
+      "channels": 10,
+      "description": "7.1 + 2 Overhead",
+      "speaker_positions": [
+        {"x": -0.866, "y": 0.0, "z": 0.5, "name": "Front Left"},
+        {"x": 0.866, "y": 0.0, "z": 0.5, "name": "Front Right"},
+        {"x": 0.0, "y": 0.0, "z": 1.0, "name": "Center"},
+        {"x": 0.0, "y": -0.5, "z": 0.0, "name": "LFE"},
+        {"x": -0.866, "y": 0.0, "z": 0.0, "name": "Side Left"},
+        {"x": 0.866, "y": 0.0, "z": 0.0, "name": "Side Right"},
+        {"x": -0.866, "y": 0.0, "z": -0.5, "name": "Back Left"},
+        {"x": 0.866, "y": 0.0, "z": -0.5, "name": "Back Right"},
+        {"x": -0.5, "y": 1.0, "z": 0.5, "name": "Top Front"},
+        {"x": 0.5, "y": 1.0, "z": 0.5, "name": "Top Rear"}
+      ],
+      "default": false
+    },
+    "surround_714": {
+      "name": "7.1.4 Atmos",
+      "channels": 12,
+      "description": "7.1 + 4 Overhead (standard Atmos layout)",
+      "speaker_positions": [
+        {"x": -0.866, "y": 0.0, "z": 0.5, "name": "Front Left"},
+        {"x": 0.866, "y": 0.0, "z": 0.5, "name": "Front Right"},
+        {"x": 0.0, "y": 0.0, "z": 1.0, "name": "Center"},
+        {"x": 0.0, "y": -0.5, "z": 0.0, "name": "LFE"},
+        {"x": -0.866, "y": 0.0, "z": 0.0, "name": "Side Left"},
+        {"x": 0.866, "y": 0.0, "z": 0.0, "name": "Side Right"},
+        {"x": -0.866, "y": 0.0, "z": -0.5, "name": "Back Left"},
+        {"x": 0.866, "y": 0.0, "z": -0.5, "name": "Back Right"},
+        {"x": -0.5, "y": 1.0, "z": 0.75, "name": "Top Front Left"},
+        {"x": 0.5, "y": 1.0, "z": 0.75, "name": "Top Front Right"},
+        {"x": -0.5, "y": 1.0, "z": -0.75, "name": "Top Back Left"},
+        {"x": 0.5, "y": 1.0, "z": -0.75, "name": "Top Back Right"}
+      ],
+      "default": false
+    },
+    "hexagonal": {
+      "name": "Hexagonal (6.0)",
+      "channels": 6,
+      "description": "Even 6-speaker ring layout",
+      "speaker_positions": [
+        {"x": 0.0, "y": 0.0, "z": 1.0, "name": "Front"},
+        {"x": 0.866, "y": 0.0, "z": 0.5, "name": "Front Right"},
+        {"x": 0.866, "y": 0.0, "z": -0.5, "name": "Back Right"},
+        {"x": 0.0, "y": 0.0, "z": -1.0, "name": "Back"},
+        {"x": -0.866, "y": 0.0, "z": -0.5, "name": "Back Left"},
+        {"x": -0.866, "y": 0.0, "z": 0.5, "name": "Front Left"}
+      ],
+      "default": false
+    },
+    "octagonal": {
+      "name": "Octagonal (8.0)",
+      "channels": 8,
+      "description": "Even 8-speaker ring layout",
+      "speaker_positions": [
+        {"x": 0.0, "y": 0.0, "z": 1.0, "name": "Front"},
+        {"x": 0.707, "y": 0.0, "z": 0.707, "name": "Front Right"},
+        {"x": 1.0, "y": 0.0, "z": 0.0, "name": "Right"},
+        {"x": 0.707, "y": 0.0, "z": -0.707, "name": "Back Right"},
+        {"x": 0.0, "y": 0.0, "z": -1.0, "name": "Back"},
+        {"x": -0.707, "y": 0.0, "z": -0.707, "name": "Back Left"},
+        {"x": -1.0, "y": 0.0, "z": 0.0, "name": "Left"},
+        {"x": -0.707, "y": 0.0, "z": 0.707, "name": "Front Left"}
+      ],
+      "default": false
+    }
+  },
+  "room_config": {
+    "small_room": {
+      "name": "Small Room (< 20m²)",
+      "speaker_distance": 2.0,
+      "listener_distance": 1.5,
+      "height": 2.4
+    },
+    "medium_room": {
+      "name": "Medium Room (20-40m²)",
+      "speaker_distance": 3.0,
+      "listener_distance": 2.5,
+      "height": 2.7
+    },
+    "large_room": {
+      "name": "Large Room (> 40m²)",
+      "speaker_distance": 4.5,
+      "listener_distance": 3.5,
+      "height": 3.0
+    }
+  }
+}

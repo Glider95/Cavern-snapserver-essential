@@ -176,16 +176,27 @@ public class PipeHandler : IDisposable {
                 return;
             } catch (Exception e) { // Content type change or server/stream closed
                 OnException?.Invoke(e);
+                // Log exception details for debugging
+                Console.Error.WriteLine($"[PipeHandler] Exception in ThreadProc: {e.GetType().Name}: {e.Message}");
             }
 
             IsConnected = false;
-            lock (locker) {
-                if (server.IsConnected) {
-                    server.Flush();
+            try {
+                lock (locker) {
+                    if (server != null) {
+                        if (server.IsConnected) {
+                            try { server.Flush(); } catch { }
+                        }
+                        try { server.Dispose(); } catch { }
+                        server = null;
+                    }
                 }
-                server.Dispose();
-                server = null;
+            } catch (Exception cleanupEx) {
+                Console.Error.WriteLine($"[PipeHandler] Cleanup error: {cleanupEx.Message}");
             }
+            
+            // Small delay before accepting next connection to prevent rapid retry loops
+            await Task.Delay(100);
         }
     }
 
