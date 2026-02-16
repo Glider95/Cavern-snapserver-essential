@@ -835,15 +835,15 @@ def _start_streaming_playback(filepath: str, info: AudioFileInfo):
             rate = CURRENT_CONFIG['sample_rate']
             depth = CURRENT_CONFIG['bit_depth']
             
-            with open(temp_audio, 'rb') as f:
-                playback_proc = subprocess.Popen(
-                    f'dotnet "{client_dll}" {channels} {rate} {depth} | dotnet "{pipetofifo_dll}" {FIFO_PATH}',
-                    shell=True,
-                    stdin=f,
-                    stdout=subprocess.DEVNULL,
-                    stderr=open(LOG_DIR / 'client.log', 'a'),
-                    start_new_session=True
-                )
+            # Use file-based mode for Dolby formats (E-AC3, TrueHD, DTS)
+            # Cavern needs the file path to properly decode containerized audio
+            playback_proc = subprocess.Popen(
+                f'dotnet "{client_dll}" -f "{temp_audio}" {channels} {depth} | dotnet "{pipetofifo_dll}" {FIFO_PATH}',
+                shell=True,
+                stdout=subprocess.DEVNULL,
+                stderr=open(LOG_DIR / 'client.log', 'a'),
+                start_new_session=True
+            )
                 
                 pipeline_processes['playback'] = playback_proc
                 playback_proc.wait()
