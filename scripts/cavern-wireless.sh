@@ -360,9 +360,10 @@ play_audio() {
     # Ensure snapserver config matches our output format (prevents speed issues)
     ensure_snapserver_config
     
-    # Check if it's a DAMF file (file-based mode)
-    if [[ "$ext" == "atmos" ]]; then
-        log_info "Using file-based mode for DAMF"
+    # Check if it's a containerized audio file (DAMF, E-AC3, TrueHD, DTS)
+    # These formats need file-based mode for Cavern to decode properly
+    if [[ "$ext" == "atmos" || "$ext" == "mp4" || "$ext" == "mkv" || "$ext" == "mka" || "$ext" == "m4v" || "$ext" == "mov" ]]; then
+        log_info "Using file-based mode for containerized audio"
         
         if [[ "$LOCAL_PLAYBACK" == true ]]; then
             # Local playback with ffplay
