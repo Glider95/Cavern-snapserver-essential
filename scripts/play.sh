@@ -75,6 +75,10 @@ ensure_snapserver_config() {
     if [ "$current_format" != "$expected_format" ]; then
       echo "[play] Updating snapserver config: $current_format -> $expected_format"
       sed -i.bak "s/sampleformat=[0-9]\+:[0-9]\+:[0-9]\+/sampleformat=$expected_format/" "$config_file"
+      
+      # Also update source URL with opus codec and correct sampleformat
+      sed -i.bak 's|source = pipe:///tmp/snapcast-out[^&]*|source = pipe:///tmp/snapcast-out?name=Cavern\&codec=opus\&sampleformat='$expected_format'|' "$config_file"
+      
       rm -f "$config_file.bak"
       
       # Restart snapserver if running

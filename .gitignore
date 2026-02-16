@@ -31,3 +31,4 @@ Thumbs.db
 .venv/
 venv/
 ENV/
+*.bak

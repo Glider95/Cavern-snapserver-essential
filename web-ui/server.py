@@ -575,8 +575,16 @@ def update_snapserver_config():
                 content
             )
         
-        # Update codec to Opus (standard)
+        # Update codec to Opus (standard) - both global setting AND source URL
         content = re.sub(r'^codec = \w+', f'codec = {new_codec}', content, flags=re.MULTILINE)
+        
+        # Also update source URL to include codec=opus (snapserver may ignore global codec setting)
+        # Match source = pipe:///tmp/snapcast-out?name=Cavern&... and ensure codec=opus is set
+        content = re.sub(
+            r'(source = pipe:///tmp/snapcast-out\?name=Cavern)(?:&codec=\w+)?(&.*)?',
+            rf'\1&codec={new_codec}\2',
+            content
+        )
         
         with open(config_path, 'w') as f:
             f.write(content)
