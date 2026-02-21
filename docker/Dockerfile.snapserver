@@ -1,0 +1,63 @@
+# Dockerfile for building Snapserver on Windows (via Docker Desktop/WSL2)
+# This is much easier than native Windows compilation
+
+FROM ubuntu:24.04 AS builder
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    git \
+    libasound2-dev \
+    libavcodec-dev \
+    libavformat-dev \
+    libboost-dev \
+    libboost-system-dev \
+    libboost-thread-dev \
+    libboost-regex-dev \
+    libboost-filesystem-dev \
+    libboost-program-options-dev \
+    libboost-chrono-dev \
+    libboost-atomic-dev \
+    libflac-dev \
+    libopus-dev \
+    libsoxr-dev \
+    libvorbis-dev \
+    libvorbisidec-dev \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+# Clone and build Snapcast
+WORKDIR /build
+RUN git clone --recursive https://github.com/badaix/snapcast.git && \
+    cd snapcast && \
+    mkdir build && \
+    cd build && \
+    cmake .. -DBUILD_SERVER=ON -DBUILD_CLIENT=OFF && \
+    make -j$(nproc) && \
+    make install
+
+# Runtime image
+FROM ubuntu:24.04
+
+RUN apt-get update && apt-get install -y \
+    libasound2 \
+    libavcodec60 \
+    libavformat60 \
+    libboost-system1.83.0 \
+    libboost-thread1.83.0 \
+    libboost-regex1.83.0 \
+    libboost-filesystem1.83.0 \
+    libboost-program-options1.83.0 \
+    libflac12 \
+    libopus0 \
+    libsoxr0 \
+    libvorbis0a \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /usr/local/bin/snapserver /usr/local/bin/snapserver
+COPY --from=builder /usr/local/share/snapserver /usr/local/share/snapserver
+
+EXPOSE 1704 1705 1780
+
+ENTRYPOINT ["snapserver"]

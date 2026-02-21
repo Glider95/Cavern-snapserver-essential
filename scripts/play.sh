@@ -1,0 +1,223 @@
+#!/usr/bin/env bash
+# Play media file through Cavern-Snapserver pipeline
+
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+LOG_DIR="$ROOT_DIR/logs"
+
+CLIENT_DLL="$ROOT_DIR/src/CavernPipeClient/bin/Release/net8.0/CavernPipeClient.dll"
+PIPETOFIFO_DLL="$ROOT_DIR/src/PipeToFifo/bin/Release/net8.0/PipeToFifo.dll"
+FIFO="/tmp/snapcast-out"
+
+OUTPUT_CHANNELS=${OUTPUT_CHANNELS:-6}
+SAMPLE_RATE=${SAMPLE_RATE:-48000}
+BIT_DEPTH=${BIT_DEPTH:-16}
+
+# Usage
+if [ $# -lt 1 ]; then
+  echo "Usage: $0 <media_file> [ffmpeg_options...]"
+  echo ""
+  echo "Examples:"
+  echo "  $0 movie.mkv"
+  echo "  $0 movie.mkv -ss 00:10:00    # Start at 10 minutes"
+  echo ""
+  echo "Environment:"
+  echo "  OUTPUT_CHANNELS=$OUTPUT_CHANNELS"
+  echo "  SAMPLE_RATE=$SAMPLE_RATE"
+  echo "  BIT_DEPTH=$BIT_DEPTH"
+  exit 1
+fi
+
+FILE="$1"
+shift || true
+
+# Validate
+if [ ! -f "$FILE" ]; then
+  echo "ERROR: File not found: $FILE"
+  exit 1
+fi
+
+if [ ! -f "$CLIENT_DLL" ]; then
+  echo "ERROR: CavernPipeClient not built. Run: ./scripts/build.sh"
+  exit 1
+fi
+
+if [ ! -f "$PIPETOFIFO_DLL" ]; then
+  echo "ERROR: PipeToFifo not built. Run: ./scripts/build.sh"
+  exit 1
+fi
+
+if [ ! -p "$FIFO" ]; then
+  echo "ERROR: Pipeline not running. Start with: ./scripts/run.sh"
+  exit 1
+fi
+
+# Cleanup
+cleanup() {
+  echo ""
+  echo "[play] Stopped"
+  pkill -P $$ 2>/dev/null || true
+}
+trap cleanup EXIT INT TERM
+
+mkdir -p "$LOG_DIR"
+
+# Function to ensure snapserver config matches our output format
+ensure_snapserver_config() {
+  local config_file="$ROOT_DIR/config/snapserver.conf"
+  local expected_format="${SAMPLE_RATE}:${BIT_DEPTH}:${OUTPUT_CHANNELS}"
+  local current_format
+  
+  if [ -f "$config_file" ]; then
+    current_format=$(grep -o 'sampleformat=[0-9]\+:[0-9]\+:[0-9]\+' "$config_file" | cut -d= -f2 || echo "")
+    
+    if [ "$current_format" != "$expected_format" ]; then
+      echo "[play] Updating snapserver config: $current_format -> $expected_format"
+      sed -i.bak "s/sampleformat=[0-9]\+:[0-9]\+:[0-9]\+/sampleformat=$expected_format/" "$config_file"
+      
+      # Set codec: FLAC for up to 8 channels, PCM for more
+      if [ "$OUTPUT_CHANNELS" -le 8 ]; then
+        local codec="flac"
+      else
+        local codec="pcm"
+      fi
+      sed -i.bak "s|^source = pipe:///tmp/snapcast-out.*|source = pipe:///tmp/snapcast-out?name=Cavern\&codec=$codec\&sampleformat=$expected_format|" "$config_file"
+      
+      rm -f "$config_file.bak"
+      
+      # Restart snapserver if running
+      if pgrep -x snapserver > /dev/null 2>&1; then
+        echo "[play] Restarting snapserver..."
+        pkill -x snapserver || true
+        sleep 0.5
+        snapserver -c "$config_file" > "$LOG_DIR/snapserver.log" 2>&1 &
+        sleep 1
+      fi
+    fi
+  fi
+}
+
+# Ensure snapserver config matches before playing
+ensure_snapserver_config
+
+# Check if file is a DAMF file (for file-based mode)
+FILE_EXT="${FILE##*.}"
+if [ "$FILE_EXT" = "atmos" ]; then
+  echo "[play] DAMF file detected - using file-based mode"
+  
+  # Build client if needed
+  if [ ! -f "$CLIENT_DLL" ]; then
+    echo "[play] Building CavernPipeClient..."
+    cd "$ROOT_DIR/src/CavernPipeClient" && dotnet build --configuration Release
+  fi
+  if [ ! -f "$PIPETOFIFO_DLL" ]; then
+    echo "[play] Building PipeToFifo..."
+    cd "$ROOT_DIR/src/PipeToFifo" && dotnet build --configuration Release
+  fi
+  
+  echo "[play] Output: ${OUTPUT_CHANNELS}ch @ ${SAMPLE_RATE}Hz, ${BIT_DEPTH}-bit"
+  echo "[play] Starting playback..."
+  
+  # File-based mode: CavernPipeClient reads file directly, outputs PCM
+  # Use stdbuf -o0 to disable output buffering - critical for pipe transfer
+  stdbuf -o0 dotnet "$CLIENT_DLL" -f "$FILE" "$OUTPUT_CHANNELS" "$BIT_DEPTH" \
+    2>"$LOG_DIR/client.log" \
+  | dotnet "$PIPETOFIFO_DLL" "$FIFO" \
+    2>"$LOG_DIR/fifo.log"
+  
+  echo ""
+  echo "[play] Playback finished"
+  exit 0
+fi
+
+# Detect audio stream for non-DAMF files
+echo "[play] Analyzing: $FILE"
+AUDIO_INFO=$(ffprobe -v error -select_streams a:0 -show_entries stream=codec_name,channels,sample_rate -of csv=p=0 "$FILE" 2>/dev/null || echo "")
+
+if [ -z "$AUDIO_INFO" ]; then
+  echo "WARNING: No audio stream detected, trying anyway..."
+  AUDIO_STREAM="0:a:0"
+  CODEC="unknown"
+else
+  CODEC=$(echo "$AUDIO_INFO" | cut -d',' -f1)
+  echo "[play] Audio codec: $CODEC"
+  AUDIO_STREAM="0:a:0"
+fi
+
+# For TrueHD, use the cached DAMF file if available
+if [ "$CODEC" = "truehd" ]; then
+  CACHE_DIR="$HOME/.cavern-wireless/cache"
+  # Calculate MD5 hash of the file
+  if command -v md5 >/dev/null 2>&1; then
+    FILE_HASH=$(md5 -q "$FILE")
+  else
+    FILE_HASH=$(md5sum "$FILE" | cut -d' ' -f1)
+  fi
+  CACHED_DAMF="$CACHE_DIR/${FILE_HASH}.atmos"
+  
+  if [ -f "$CACHED_DAMF" ]; then
+    echo "[play] Found cached DAMF: $CACHED_DAMF"
+    echo "[play] Using file-based mode for TrueHD"
+    
+    # Use file-based mode with the cached DAMF
+    stdbuf -o0 dotnet "$CLIENT_DLL" -f "$CACHED_DAMF" "$OUTPUT_CHANNELS" "$BIT_DEPTH" \
+      2>"$LOG_DIR/client.log" \
+    | dotnet "$PIPETOFIFO_DLL" "$FIFO" \
+      2>"$LOG_DIR/fifo.log"
+    
+    echo ""
+    echo "[play] Playback finished"
+    exit 0
+  else
+    echo "[play] WARNING: TrueHD file not in cache. Run cavern-wireless.sh first to convert."
+    echo "[play] Attempting streaming mode (may not work)..."
+  fi
+fi
+
+# Pipeline
+echo "[play] Starting playback..."
+echo "[play] Output: ${OUTPUT_CHANNELS}ch @ ${SAMPLE_RATE}Hz, ${BIT_DEPTH}-bit"
+echo ""
+
+# Build client if needed
+if [ ! -f "$CLIENT_DLL" ]; then
+  echo "[play] Building CavernPipeClient..."
+  cd "$ROOT_DIR/src/CavernPipeClient" && dotnet build --configuration Release
+fi
+if [ ! -f "$PIPETOFIFO_DLL" ]; then
+  echo "[play] Building PipeToFifo..."
+  cd "$ROOT_DIR/src/PipeToFifo" && dotnet build --configuration Release
+fi
+
+# Cavern can decode Dolby formats (E-AC3, TrueHD, DTS) when reading files
+# Streaming mode is only for PCM data; Dolby formats need file-based mode
+TEMP_AUDIO="/tmp/cavern-temp-audio.$$.mka"
+
+cleanup_temp() {
+  rm -f "$TEMP_AUDIO"
+}
+trap cleanup_temp EXIT
+
+echo "[play] Extracting audio to Matroska container..."
+ffmpeg \
+  -i "$FILE" \
+  -map "$AUDIO_STREAM" \
+  -c:a copy \
+  "$TEMP_AUDIO" \
+  2>"$LOG_DIR/ffmpeg.log"
+
+if [ ! -f "$TEMP_AUDIO" ]; then
+  echo "ERROR: Failed to extract audio track"
+  exit 1
+fi
+
+# Use file-based mode for Cavern to decode E-AC3/TrueHD/DTS properly
+echo "[play] Sending to Cavern for Dolby decoding..."
+dotnet "$CLIENT_DLL" -f "$TEMP_AUDIO" "$OUTPUT_CHANNELS" "$BIT_DEPTH" \
+  2>"$LOG_DIR/client.log" \
+| dotnet "$PIPETOFIFO_DLL" "$FIFO" \
+  2>"$LOG_DIR/fifo.log"
+
+echo ""
+echo "[play] Playback finished"
