@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CavernPipeClient\CavernPipeClient.csproj" />
+    <ProjectReference Include="..\src\CavernPipeClient\CavernPipeClient.csproj" />
   </ItemGroup>
 
 </Project>
